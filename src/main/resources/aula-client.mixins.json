@@ -1,0 +1,11 @@
+{
+  "required": false,
+  "package": "com.aulaclient.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "GameRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

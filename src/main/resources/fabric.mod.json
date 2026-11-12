@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "aula-client",
+  "version": "${version}",
+  "name": "Aula Client",
+  "description": "Aula Client: eigenes Menue und HUD fuer Minecraft. Keine Combat-, Movement- oder Automations-Module.",
+  "authors": ["Milan"],
+  "license": "MIT",
+  "environment": "client",
+  "mixins": ["aula-client.mixins.json"],
+  "entrypoints": {
+    "client": ["com.aulaclient.AulaClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
