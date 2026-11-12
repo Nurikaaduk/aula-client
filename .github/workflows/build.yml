@@ -22,7 +22,7 @@ jobs:
         continue-on-error: true
 
       - name: Dump Minecraft API (debug)
-        if: steps.build.outcome == 'failure'
+        if: always()
         run: |
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
           echo "=== Classes with Projection/Aspect/Camera in name"
