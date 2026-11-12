@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * Aula Client - Einstiegspunkt.
@@ -28,9 +28,9 @@ public class AulaClient implements ClientModInitializer {
 
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ID, "main"));
         KeyMapping openMenu = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.aula.menu", GLFW.GLFW_KEY_RIGHT_SHIFT, category));
+                new KeyMapping("key.aula.menu", InputConstants.KEY_RSHIFT, category));
         KeyMapping zoomKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.aula.zoom", GLFW.GLFW_KEY_C, category));
+                new KeyMapping("key.aula.zoom", InputConstants.KEY_C, category));
 
         modules = new ModuleManager(zoomKey);
         modules.applyConfig();
@@ -52,7 +52,7 @@ public class AulaClient implements ClientModInitializer {
         HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, original ->
                 (graphics, tickCounter) -> {
                     var mc = net.minecraft.client.Minecraft.getInstance();
-                    if (modules.crosshair.enabled && !mc.options.hideGui) {
+                    if (modules.crosshair.enabled) {
                         modules.crosshair.draw(graphics);
                     } else {
                         original.extractRenderState(graphics, tickCounter);

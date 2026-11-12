@@ -65,7 +65,7 @@ public class ModuleManager {
 
     public void renderHud(GuiGraphicsExtractor g) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options.hideGui || mc.screen != null) return;
+        if (mc.gui.screen() != null) return;
         for (HudModule m : modules) if (m.enabled) m.render(g, mc);
     }
 
@@ -196,7 +196,7 @@ public class ModuleManager {
         @Override
         public void tick(Minecraft mc) {
             var fov = mc.options.fov();
-            boolean active = key.isDown() && mc.screen == null;
+            boolean active = key.isDown() && mc.gui.screen() == null;
             if (active) {
                 if (original < 0) {
                     original = fov.get();
