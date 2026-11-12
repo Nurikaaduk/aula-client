@@ -7,7 +7,7 @@ Eigener Fabric-Client fuer Minecraft 26.3 (Java 25). Komplett eigener Code, kein
 - **HUD-Module:** FPS, Koordinaten, Uhrzeit, CPS, Keystrokes, Ruestung (mit Haltbarkeit)
 - **Zoom** (Taste C, weich interpoliert, FOV einstellbar)
 - **Cosmetics:** eigenes Crosshair (Kreuz, Punkt, Plus, Quadrat; Groesse; Akzentfarbe oder Weiss) mit Live-Vorschau
-- **Stretched Resolution:** Presets 4:3, 5:4, 1:1, 16:10, 3:2 oder frei einstellbar (Mixin in `GameRenderer`)
+- **Stretched Resolution:** Presets 4:3, 5:4, 1:1, 16:10, 3:2 oder frei einstellbar (Mixin in `Camera`)
 - **Charakter-Cosmetics:** Partikel-Effekte um deinen Charakter (Halo, Wirbel, Spur, Aura) mit 7 Partikelarten, nur lokal sichtbar
 - **HUD-Editor:** Module per Maus verschieben, Raster, Zuruecksetzen
 - **Farbthemen:** 7 Akzentfarben
