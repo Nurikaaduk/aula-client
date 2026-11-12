@@ -2,7 +2,7 @@ package com.aulaclient.module;
 
 import com.aulaclient.config.AulaConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /** Basisklasse fuer alle Module. */
 public abstract class HudModule {
@@ -43,7 +43,7 @@ public abstract class HudModule {
 
     public void tick(Minecraft mc) {}
 
-    public abstract void render(GuiGraphics g, Minecraft mc);
+    public abstract void render(GuiGraphicsExtractor g, Minecraft mc);
 
     public void resetPosition() {
         x = defX;
@@ -53,11 +53,11 @@ public abstract class HudModule {
     }
 
     /** Kleine halbtransparente Box mit Akzentstreifen und Text. */
-    protected void box(GuiGraphics g, Minecraft mc, String text) {
+    protected void box(GuiGraphicsExtractor g, Minecraft mc, String text) {
         w = mc.font.width(text) + 8;
         h = 14;
         g.fill(x, y, x + w, y + h, 0x90101018);
         g.fill(x, y, x + 2, y + h, AulaConfig.get().accent);
-        g.drawString(mc.font, text, x + 5, y + 3, 0xFFFFFFFF, true);
+        g.text(mc.font, text, x + 5, y + 3, 0xFFFFFFFF, true);
     }
 }

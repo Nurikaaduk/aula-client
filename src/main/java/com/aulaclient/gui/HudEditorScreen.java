@@ -3,7 +3,7 @@ package com.aulaclient.gui;
 import com.aulaclient.AulaClient;
 import com.aulaclient.config.AulaConfig;
 import com.aulaclient.module.HudModule;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -23,7 +23,7 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mx, int my, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
         int accent = AulaConfig.get().accent;
         g.fill(0, 0, width, height, 0x60000000);
 
@@ -38,7 +38,7 @@ public class HudEditorScreen extends Screen {
             int col = (m == dragging || hov) ? accent : 0x80FFFFFF;
             outline(g, m.x - 1, m.y - 1, m.x + m.w + 1, m.y + m.h + 1, col);
             if (m == dragging || hov) {
-                g.drawString(font, m.name, m.x, m.y - 11, accent, true);
+                g.text(font, m.name, m.x, m.y - 11, accent, true);
             }
         }
 
@@ -47,14 +47,14 @@ public class HudEditorScreen extends Screen {
         boolean hov = mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
         g.fill(bx, by, bx + bw, by + bh, hov ? accent : 0xEE1C1C28);
         String label = "Zuruecksetzen";
-        g.drawString(font, label, bx + (bw - font.width(label)) / 2, by + 6,
+        g.text(font, label, bx + (bw - font.width(label)) / 2, by + 6,
                 hov ? 0xFF101018 : 0xFFFFFFFF, false);
 
         String hint = "Ziehen zum Verschieben  |  ESC: zurueck";
-        g.drawString(font, hint, (width - font.width(hint)) / 2, 8, 0xFFB0B0C0, true);
+        g.text(font, hint, (width - font.width(hint)) / 2, 8, 0xFFB0B0C0, true);
     }
 
-    private void outline(GuiGraphics g, int x1, int y1, int x2, int y2, int col) {
+    private void outline(GuiGraphicsExtractor g, int x1, int y1, int x2, int y2, int col) {
         g.fill(x1, y1, x2, y1 + 1, col);
         g.fill(x1, y2 - 1, x2, y2, col);
         g.fill(x1, y1, x1 + 1, y2, col);
@@ -112,7 +112,7 @@ public class HudEditorScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(new AulaScreen());
+        minecraft.setScreenAndShow(new AulaScreen());
     }
 
     @Override

@@ -38,7 +38,7 @@ public class AulaClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             modules.tick(mc);
             while (openMenu.consumeClick()) {
-                mc.setScreen(new AulaScreen());
+                mc.setScreenAndShow(new AulaScreen());
             }
         });
 
@@ -55,7 +55,7 @@ public class AulaClient implements ClientModInitializer {
                     if (modules.crosshair.enabled && !mc.options.hideGui) {
                         modules.crosshair.draw(graphics);
                     } else {
-                        original.render(graphics, tickCounter);
+                        original.extractRenderState(graphics, tickCounter);
                     }
                 });
     }

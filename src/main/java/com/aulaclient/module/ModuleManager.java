@@ -3,12 +3,11 @@ package com.aulaclient.module;
 import com.aulaclient.config.AulaConfig;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -64,7 +63,7 @@ public class ModuleManager {
         for (HudModule m : modules) if (m.enabled) m.tick(mc);
     }
 
-    public void renderHud(GuiGraphics g) {
+    public void renderHud(GuiGraphicsExtractor g) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui || mc.screen != null) return;
         for (HudModule m : modules) if (m.enabled) m.render(g, mc);
@@ -81,7 +80,7 @@ public class ModuleManager {
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
             String t = supplier.apply(mc);
             if (!t.isEmpty()) box(g, mc, t);
         }
@@ -99,9 +98,8 @@ public class ModuleManager {
 
         @Override
         public void tick(Minecraft mc) {
-            long win = mc.getWindow().handle();
-            boolean l = GLFW.glfwGetMouseButton(win, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-            boolean r = GLFW.glfwGetMouseButton(win, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+            boolean l = mc.options.keyAttack.isDown();
+            boolean r = mc.options.keyUse.isDown();
             long now = System.currentTimeMillis();
             if (l && !lastL) left.add(now);
             if (r && !lastR) right.add(now);
@@ -112,7 +110,7 @@ public class ModuleManager {
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
             box(g, mc, left.size() + " | " + right.size() + " CPS");
         }
     }
@@ -125,15 +123,15 @@ public class ModuleManager {
             h = 78;
         }
 
-        private void key(GuiGraphics g, Minecraft mc, int kx, int ky, int kw, String label, boolean down) {
+        private void key(GuiGraphicsExtractor g, Minecraft mc, int kx, int ky, int kw, String label, boolean down) {
             int bg = down ? AulaConfig.get().accent : 0x90101018;
             g.fill(kx, ky, kx + kw, ky + 18, bg);
             int tw = mc.font.width(label);
-            g.drawString(mc.font, label, kx + (kw - tw) / 2, ky + 5, down ? 0xFF101018 : 0xFFFFFFFF, true);
+            g.text(mc.font, label, kx + (kw - tw) / 2, ky + 5, down ? 0xFF101018 : 0xFFFFFFFF, true);
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
             var o = mc.options;
             key(g, mc, x + 20, y, 18, "W", o.keyUp.isDown());
             key(g, mc, x, y + 20, 18, "A", o.keyLeft.isDown());
@@ -158,7 +156,7 @@ public class ModuleManager {
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
             if (mc.player == null) return;
             int row = 0;
             for (EquipmentSlot slot : SLOTS) {
@@ -166,12 +164,12 @@ public class ModuleManager {
                 int ry = y + row * 18;
                 g.fill(x, ry, x + 60, ry + 17, 0x90101018);
                 if (!st.isEmpty()) {
-                    g.renderItem(st, x + 1, ry);
-                    g.renderItemDecorations(mc.font, st, x + 1, ry);
+                    g.item(st, x + 1, ry);
+                    g.itemDecorations(mc.font, st, x + 1, ry);
                     if (st.isDamageableItem()) {
                         int left = st.getMaxDamage() - st.getDamageValue();
                         int pct = Math.round(100f * left / st.getMaxDamage());
-                        g.drawString(mc.font, pct + "%", x + 22, ry + 5, 0xFFFFFFFF, true);
+                        g.text(mc.font, pct + "%", x + 22, ry + 5, 0xFFFFFFFF, true);
                     }
                 }
                 row++;
@@ -227,7 +225,7 @@ public class ModuleManager {
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {}
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
     }
 
     /** Eigenes Crosshair (Cosmetic). Ersetzt das Vanilla-Crosshair, solange aktiv. */
@@ -242,7 +240,7 @@ public class ModuleManager {
         }
 
         /** Wird vom HudElement-Replace aufgerufen. */
-        public void draw(GuiGraphics g) {
+        public void draw(GuiGraphicsExtractor g) {
             AulaConfig c = AulaConfig.get();
             int cx = g.guiWidth() / 2, cy = g.guiHeight() / 2;
             int col = c.crosshairAccent ? c.accent : 0xFFFFFFFF;
@@ -270,7 +268,7 @@ public class ModuleManager {
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {}
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
     }
 
     /** Stretched Resolution. Die eigentliche Arbeit macht GameRendererMixin. */
@@ -285,7 +283,7 @@ public class ModuleManager {
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {}
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
     }
 
     /** Lokale Charakter-Effekte per Partikel (Halo, Wirbel, Spur, Aura). Nur fuer dich sichtbar. */
@@ -355,6 +353,6 @@ public class ModuleManager {
         }
 
         @Override
-        public void render(GuiGraphics g, Minecraft mc) {}
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
     }
 }

@@ -24,34 +24,38 @@ jobs:
       - name: Dump Minecraft API (debug)
         if: steps.build.outcome == 'failure'
         run: |
-          findjar() {
-            for j in $(find / -name '*.jar' -size +100k 2>/dev/null); do
-              if unzip -l "$j" 2>/dev/null | grep -q "$1"; then echo "$j"; return; fi
-            done
-          }
-          MC=$(findjar 'net/minecraft/client/Minecraft.class')
-          FAPI=$(findjar 'net/fabricmc/fabric/api/client/rendering/v1/hud/HudElementRegistry.class')
-          KMH=$(findjar 'net/fabricmc/fabric/api/client/keymapping/v1/KeyMappingHelper.class')
-          echo "MC=$MC"; echo "FAPI=$FAPI"; echo "KMH=$KMH"
-          echo "=== LWJGL jars"; find / -name 'lwjgl*.jar' 2>/dev/null | head -20
-          echo "=== compileClasspath lwjgl"; gradle dependencies --configuration compileClasspath 2>&1 | grep -i lwjgl | head
-          echo "=== class names"
-          unzip -l "$MC" | awk '{print $4}' | grep -E 'GuiGraphics|input/MouseButton|input/KeyEvent|/KeyMapping|resources/Identifier|resources/ResourceLocation|platform/InputConstants|gui/screens/Screen.class|DeltaTracker' | head -40
-          for c in net.minecraft.client.gui.GuiGraphicsExtractor net.minecraft.client.gui.screens.Screen net.minecraft.client.KeyMapping net.minecraft.client.input.MouseButtonEvent net.minecraft.client.gui.Font com.mojang.blaze3d.platform.Window com.mojang.blaze3d.platform.InputConstants; do
-            echo "=== $c"; javap -public -cp "$MC" "$c" 2>&1 | head -150
+          MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
+          echo "MC=$MC"
+          echo "=== Fabric jars with KeyMapping"
+          for j in $(find ~/.gradle/caches/modules-2 -name 'fabric-*.jar'); do
+            unzip -l "$j" 2>/dev/null | awk '{print $4}' | grep -i 'KeyMapping\|KeyBinding' | sed "s|^|$(basename $j): |"
+          done | head -20
+          echo "=== InputConstants shift"
+          javap -public -constants -cp "$MC" com.mojang.blaze3d.platform.InputConstants | grep -Ei 'SHIFT|KEY_C;'
+          echo "=== KeyMapping.Category"
+          javap -public -cp "$MC" 'net.minecraft.client.KeyMapping$Category'
+          echo "=== Gui"
+          javap -public -cp "$MC" net.minecraft.client.gui.Gui | grep -Ei 'screen|hide|hud|debug|isShow' | head -30
+          echo "=== Options hide/gui"
+          javap -public -cp "$MC" net.minecraft.client.Options | grep -Ei 'gui|hud|hideGui' | head -20
+          echo "=== Minecraft screen-ish"
+          javap -public -cp "$MC" net.minecraft.client.Minecraft | grep -Ei 'static.*getInstance|screen|overlay' | head -30
+          echo "=== Screen event methods"
+          for c in net.minecraft.client.gui.components.events.GuiEventListener net.minecraft.client.gui.components.events.ContainerEventHandler net.minecraft.client.gui.components.events.AbstractContainerEventHandler; do
+            javap -public -cp "$MC" "$c" | grep -Ei 'mouse|drag|scroll|release|click'
           done
-          echo "=== Minecraft (filtered)"
-          javap -public -cp "$MC" net.minecraft.client.Minecraft 2>&1 | grep -Ei 'screen|getFps|getWindow|player|level|options|font|paused|mouseHandler|gui' | head -60
-          echo "=== Options (filtered)"
-          javap -public -cp "$MC" net.minecraft.client.Options 2>&1 | grep -Ei 'hide|fov|key(Up|Left|Down|Right|Jump|Attack|Use)|renderDebug' | head -40
-          echo "=== Hud"
-          javap -public -cp "$FAPI" net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements 2>&1 | head -60
-          echo "=== KeyMappingHelper"
-          javap -public -cp "$KMH" net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper 2>&1 | head -20
-          echo "=== Entity/Player/Particle bits"
-          javap -public -cp "$MC" net.minecraft.world.entity.player.Player 2>&1 | grep -Ei 'getItemBySlot|getBbHeight' | head
-          javap -public -cp "$MC" net.minecraft.client.multiplayer.ClientLevel 2>&1 | grep -Ei 'addParticle' | head
-          javap -public -cp "$MC" net.minecraft.world.item.ItemStack 2>&1 | grep -Ei 'isDamageableItem|getMaxDamage|getDamageValue' | head
+          echo "=== GameRenderer"
+          javap -public -cp "$MC" net.minecraft.client.renderer.GameRenderer | grep -Ei 'projection|aspect|fov' | head -20
+          echo "=== Entity / LivingEntity / EquipmentSlot"
+          javap -public -cp "$MC" net.minecraft.world.entity.Entity | grep -E ' getBbHeight| getX\(| getY\(| getZ\(| getDeltaMovement' 
+          javap -public -cp "$MC" net.minecraft.world.entity.LivingEntity | grep -E 'getItemBySlot'
+          javap -public -cp "$MC" net.minecraft.world.entity.EquipmentSlot | grep -E 'HEAD|CHEST|LEGS|FEET'
+          echo "=== ParticleTypes"
+          javap -public -cp "$MC" net.minecraft.core.particles.ParticleTypes | grep -E ' (HEART|END_ROD|FLAME|CLOUD|NOTE|HAPPY_VILLAGER|ENCHANT);'
+          echo "=== Identifier"
+          javap -public -cp "$MC" net.minecraft.resources.Identifier | grep -E 'fromNamespaceAndPath'
+          echo "=== Category register"
+          javap -public -cp "$MC" net.minecraft.client.OptionInstance | grep -E ' get\(| set\('
 
       - if: steps.build.outcome == 'failure'
         run: exit 1
