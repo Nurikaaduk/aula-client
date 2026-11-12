@@ -16,7 +16,46 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: current
-      - run: gradle build --stacktrace
+
+      - id: build
+        run: gradle build --stacktrace
+        continue-on-error: true
+
+      - name: Dump Minecraft API (debug)
+        if: steps.build.outcome == 'failure'
+        run: |
+          findjar() {
+            for j in $(find / -name '*.jar' -size +100k 2>/dev/null); do
+              if unzip -l "$j" 2>/dev/null | grep -q "$1"; then echo "$j"; return; fi
+            done
+          }
+          MC=$(findjar 'net/minecraft/client/Minecraft.class')
+          FAPI=$(findjar 'net/fabricmc/fabric/api/client/rendering/v1/hud/HudElementRegistry.class')
+          KMH=$(findjar 'net/fabricmc/fabric/api/client/keymapping/v1/KeyMappingHelper.class')
+          echo "MC=$MC"; echo "FAPI=$FAPI"; echo "KMH=$KMH"
+          echo "=== LWJGL jars"; find / -name 'lwjgl*.jar' 2>/dev/null | head -20
+          echo "=== compileClasspath lwjgl"; gradle dependencies --configuration compileClasspath 2>&1 | grep -i lwjgl | head
+          echo "=== class names"
+          unzip -l "$MC" | awk '{print $4}' | grep -E 'GuiGraphics|input/MouseButton|input/KeyEvent|/KeyMapping|resources/Identifier|resources/ResourceLocation|platform/InputConstants|gui/screens/Screen.class|DeltaTracker' | head -40
+          for c in net.minecraft.client.gui.GuiGraphicsExtractor net.minecraft.client.gui.screens.Screen net.minecraft.client.KeyMapping net.minecraft.client.input.MouseButtonEvent net.minecraft.client.gui.Font com.mojang.blaze3d.platform.Window com.mojang.blaze3d.platform.InputConstants; do
+            echo "=== $c"; javap -public -cp "$MC" "$c" 2>&1 | head -150
+          done
+          echo "=== Minecraft (filtered)"
+          javap -public -cp "$MC" net.minecraft.client.Minecraft 2>&1 | grep -Ei 'screen|getFps|getWindow|player|level|options|font|paused|mouseHandler|gui' | head -60
+          echo "=== Options (filtered)"
+          javap -public -cp "$MC" net.minecraft.client.Options 2>&1 | grep -Ei 'hide|fov|key(Up|Left|Down|Right|Jump|Attack|Use)|renderDebug' | head -40
+          echo "=== Hud"
+          javap -public -cp "$FAPI" net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements 2>&1 | head -60
+          echo "=== KeyMappingHelper"
+          javap -public -cp "$KMH" net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper 2>&1 | head -20
+          echo "=== Entity/Player/Particle bits"
+          javap -public -cp "$MC" net.minecraft.world.entity.player.Player 2>&1 | grep -Ei 'getItemBySlot|getBbHeight' | head
+          javap -public -cp "$MC" net.minecraft.client.multiplayer.ClientLevel 2>&1 | grep -Ei 'addParticle' | head
+          javap -public -cp "$MC" net.minecraft.world.item.ItemStack 2>&1 | grep -Ei 'isDamageableItem|getMaxDamage|getDamageValue' | head
+
+      - if: steps.build.outcome == 'failure'
+        run: exit 1
+
       - uses: actions/upload-artifact@v4
         with:
           name: aula-client-jar
