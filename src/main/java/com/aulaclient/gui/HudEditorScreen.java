@@ -3,6 +3,7 @@ package com.aulaclient.gui;
 import com.aulaclient.AulaClient;
 import com.aulaclient.config.AulaConfig;
 import com.aulaclient.module.HudModule;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -64,7 +65,7 @@ public class HudEditorScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int mx = (int) event.x(), my = (int) event.y();
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             int bw = 110, bh = 20, bx = (width - bw) / 2, by = height - 34;
             if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) {
                 for (HudModule m : AulaClient.modules.modules) m.resetPosition();

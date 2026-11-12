@@ -4,6 +4,7 @@ import com.aulaclient.AulaClient;
 import com.aulaclient.config.AulaConfig;
 import com.aulaclient.config.Themes;
 import com.aulaclient.module.HudModule;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -270,7 +271,7 @@ public class AulaScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             for (int i = regions.size() - 1; i >= 0; i--) {
                 Region r = regions.get(i);
                 if (over((int) event.x(), (int) event.y(), r.x, r.y, r.w, r.h)) {

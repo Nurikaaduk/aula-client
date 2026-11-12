@@ -22,7 +22,7 @@ jobs:
         continue-on-error: true
 
       - name: Dump Minecraft API (debug)
-        if: always()
+        if: steps.build.outcome == 'failure'
         run: |
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
           echo "=== InputConstants mouse"
