@@ -25,15 +25,13 @@ jobs:
         if: always()
         run: |
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== Projection"
-          javap -p -cp "$MC" net.minecraft.client.renderer.Projection | cut -c1-220
-          echo "=== ProjectionMatrixBuffer"
-          javap -p -cp "$MC" net.minecraft.client.renderer.ProjectionMatrixBuffer | cut -c1-220
-          echo "=== Users of Projection (classes referencing it)"
-          mkdir -p /tmp/x && cd /tmp/x && unzip -q -o "$MC" 'net/minecraft/client/*' 
-          grep -rl 'renderer/Projection' net | head -20
-          echo "=== Camera all"
-          javap -p -cp "$MC" net.minecraft.client.Camera | grep -Ei 'projection|fov|aspect|setup|perspective' | cut -c1-200
+          echo "=== InputConstants mouse"
+          javap -public -constants -cp "$MC" com.mojang.blaze3d.platform.InputConstants | grep -Ei 'MOUSE'
+          echo "=== MouseButtonInfo"
+          javap -public -constants -cp "$MC" net.minecraft.client.input.MouseButtonInfo
+          javap -public -constants -cp "$MC" 'net.minecraft.client.input.MouseButtonInfo$MouseButton'
+          echo "=== MouseHandler"
+          javap -p -cp "$MC" net.minecraft.client.MouseHandler | grep -Ei 'onButton|onPress|xpos|ypos|scale|mouseClicked|setup|button' | cut -c1-200
 
       - if: steps.build.outcome == 'failure'
         run: exit 1
