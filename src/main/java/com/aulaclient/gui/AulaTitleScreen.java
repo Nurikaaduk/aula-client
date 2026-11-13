@@ -148,6 +148,37 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
+    /** Eigener Flammen-/Horn-Effekt ueber dem Kopf des Charakters (billig: nur wenige fill-Aufrufe). */
+    private void drawFlame(GuiGraphicsExtractor g, long now, float alpha) {
+        if (!charReady || alpha <= 0f) return;
+        double tt = now / 1000.0;
+        int cxf = (int) px;
+        int base = (int) (py - CH / 2.0) + CH / 14;      // knapp ueber der Kopfoberkante
+        int fh = Math.max(40, CH / 3);
+        int[][] layers = {{0xFF3A00, 0}, {0xFF9A00, 1}, {0xFFE66A, 2}};
+        for (int[] L : layers) {
+            int hh = (int) (fh * (1.0 - L[1] * 0.28) * (1 + 0.06 * Math.sin(tt * 9 + L[1])));
+            int ww = (int) (CW * (0.30 - L[1] * 0.07));
+            for (int r = 0; r < hh; r += 2) {
+                double f = r / (double) hh;                 // 0 unten .. 1 Spitze
+                double wdt = ww * Math.sin(Math.min(1.0, f * 1.15 + 0.12) * Math.PI * 0.5) * (1 - f * f);
+                int sway = (int) (Math.sin(tt * 6 + f * 4 + L[1]) * ww * 0.18 * f);
+                int y = base - r;
+                g.fill(cxf + sway - (int) wdt, y - 2, cxf + sway + (int) wdt + 1, y, argb(L[0], (0.35f + 0.15f * L[1]) * alpha));
+            }
+        }
+        // Hoerner: zwei geschwungene, dunkelrote Spitzen
+        int hornCol = argb(0x8A1020, 0.95f * alpha), tip = argb(0xFF5A3C, alpha);
+        for (int side = -1; side <= 1; side += 2) {
+            for (int i = 0; i < 14; i++) {
+                int hx = cxf + side * (CW / 4 + i * 2);
+                int hy = base + CH / 22 - (int) (i * i * 0.35) ;
+                int th = Math.max(1, 5 - i / 3);
+                g.fill(hx, hy, hx + 3, hy + th, i > 11 ? tip : hornCol);
+            }
+        }
+    }
+
     private void drawShadow(GuiGraphicsExtractor g, float alpha) {
         if (!charReady) return;
         double floor = height - 8;
@@ -198,31 +229,33 @@ public class AulaTitleScreen extends Screen {
     // ---------------------------------------------------------------- background
 
     private void drawCurtains(GuiGraphicsExtractor g, float t, float fade) {
-        int strands = 9;
+        final int strands = 7, step = 6;
         for (int side = 0; side < 2; side++) {
             for (int k = 0; k < strands; k++) {
-                double frac = (k + 0.5) / strands;                 // 0 = Rand, 1 = innen
+                double frac = (k + 0.5) / strands;
                 double base = side == 0 ? width * (0.01 + 0.25 * frac) : width * (0.99 - 0.25 * frac);
-                float alpha = (0.035f + 0.05f * (float) Math.sin(frac * Math.PI * 0.9 + 0.2)) * fade;
+                float alpha = (0.07f + 0.09f * (float) Math.sin(frac * Math.PI * 0.9 + 0.2)) * fade;
                 int col = argb(0xFFFFFF, alpha);
-                int col2 = argb(0xFFFFFF, alpha * 0.45f);
-                for (int y = 0; y < height; y += 2) {
-                    double yn = y / (double) height;
+                int prev = Integer.MIN_VALUE;
+                for (int y = 0; y < height; y += step) {
+                    double yn = (y + step / 2.0) / height;
                     double bulge = Math.exp(-Math.pow((yn - 0.38) / 0.28, 2)) * width * 0.055 * (0.6 + frac);
                     double x = base
                             + width * 0.012 * Math.sin(yn * 7.0 + t * 0.35 + k * 0.5 + side * 2.1)
                             + width * 0.008 * Math.sin(yn * 3.0 - t * 0.22 + k);
                     x += (side == 0 ? 1 : -1) * bulge;
                     int xi = (int) x;
-                    g.fill(xi - 1, y, xi + 2, y + 2, col2);
-                    g.fill(xi, y, xi + 1, y + 2, col);
+                    int lo = prev == Integer.MIN_VALUE ? xi : Math.min(prev, xi);
+                    int hi = prev == Integer.MIN_VALUE ? xi : Math.max(prev, xi);
+                    g.fill(lo, y, hi + 1, y + step, col);
+                    prev = xi;
                 }
             }
         }
     }
 
     private void drawParticles(GuiGraphicsExtractor g, float t, float fade) {
-        for (int i = 0; i < 26; i++) {
+        for (int i = 0; i < 18; i++) {
             double xr = rnd(i, 1);
             double x = (i % 2 == 0) ? xr * width * 0.27 : width * (0.73 + xr * 0.27);
             double speed = 3 + rnd(i, 2) * 6;
@@ -325,10 +358,11 @@ public class AulaTitleScreen extends Screen {
             if (!charStarted) { charStarted = true; startWalk(); }
             drawShadow(g, m);
             drawChar(g, mx, my, now, m);
+            drawFlame(g, now, m);
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.7.0)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.7.1)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
