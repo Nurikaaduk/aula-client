@@ -19,8 +19,11 @@ public class HudEditorScreen extends Screen {
     private HudModule dragging;
     private int dx, dy;
 
-    public HudEditorScreen() {
+    private final Screen parent;
+
+    public HudEditorScreen(Screen parent) {
         super(Component.literal("HUD Editor"));
+        this.parent = parent;
     }
 
     @Override
@@ -113,7 +116,7 @@ public class HudEditorScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreenAndShow(new AulaScreen());
+        minecraft.setScreenAndShow(new AulaScreen(parent));
     }
 
     @Override

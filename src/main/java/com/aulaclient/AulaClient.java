@@ -2,6 +2,7 @@ package com.aulaclient;
 
 import com.aulaclient.config.AulaConfig;
 import com.aulaclient.gui.AulaScreen;
+import com.aulaclient.gui.AulaTitleScreen;
 import com.aulaclient.module.ModuleManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -9,6 +10,7 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.resources.Identifier;
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -37,6 +39,9 @@ public class AulaClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             modules.tick(mc);
+            if (AulaConfig.get().customTitle && mc.gui.screen() instanceof TitleScreen) {
+                mc.setScreenAndShow(new AulaTitleScreen());
+            }
             while (openMenu.consumeClick()) {
                 mc.setScreenAndShow(new AulaScreen());
             }

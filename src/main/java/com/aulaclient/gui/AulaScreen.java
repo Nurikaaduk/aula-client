@@ -57,8 +57,20 @@ public class AulaScreen extends Screen {
     // Layout (pro Frame berechnet, fuer Scroll-Hit-Tests)
     private int px, py, pw, ph, cx, cw, ay, ah;
 
+    private final Screen parent;
+
     public AulaScreen() {
+        this(null);
+    }
+
+    public AulaScreen(Screen parent) {
         super(Component.literal(AulaClient.NAME));
+        this.parent = parent;
+    }
+
+    @Override
+    public void onClose() {
+        minecraft.setScreenAndShow(parent);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -171,7 +183,7 @@ public class AulaScreen extends Screen {
 
         g.text(font, "OTHERS", px + 10, py + 138, TXT3, false);
         navItem(g, mx, my, px + 6, py + 150, 84, "Editor", false,
-                () -> minecraft.setScreenAndShow(new HudEditorScreen()));
+                () -> minecraft.setScreenAndShow(new HudEditorScreen(parent)));
         navItem(g, mx, my, px + 6, py + 170, 84, "Settings", page.equals("Settings"), () -> setPage("Settings"));
 
         g.text(font, fit(minecraft.getUser().getName(), 80), px + 10, py + ph - 16, TXT2, false);
@@ -268,6 +280,19 @@ public class AulaScreen extends Screen {
             if (sel) g.text(font, "active", x + cardW - 10 - font.width("active"), y + 8, TXT2, false);
             region(x, y, cardW, 24, () -> Themes.apply(idx));
         }
+
+        // Titelbildschirm-Schalter
+        int ty = py + 44 + 4 * 28 + 4;
+        int rowW = cw;
+        boolean on = cfg.customTitle;
+        boolean hov = over(mx, my, cx, ty, rowW, 24);
+        Ui.rr(g, cx, ty, rowW, 24, 5, hov ? CARD_HOVER : CARD);
+        g.text(font, "Custom title screen", cx + 10, ty + 8, TXT, false);
+        Ui.toggle(g, cx + rowW - 34, ty + 6, on, cfg.accent);
+        region(cx, ty, rowW, 24, () -> {
+            cfg.customTitle = !cfg.customTitle;
+            AulaConfig.save();
+        });
     }
 
     // ---------------------------------------------------------------- settings panel
