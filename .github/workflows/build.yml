@@ -21,20 +21,6 @@ jobs:
         run: gradle build --stacktrace
         continue-on-error: true
 
-      - name: Dump Minecraft API (debug)
-        if: always()
-        run: |
-          MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== lambda"
-          javap -p -c -cp "$MC" net.minecraft.client.gui.components.PlayerSkinWidget 2>&1 | grep -E 'lambda\$|REF_invokeStatic|RenderTypes' | cut -c1-240 | head
-          javap -p -v -cp "$MC" net.minecraft.client.gui.components.PlayerSkinWidget 2>&1 | grep -E 'REF_invoke|MethodHandle' | cut -c1-240 | head
-          echo "=== RenderTypes"
-          javap -public -cp "$MC" net.minecraft.client.renderer.rendertype.RenderTypes 2>&1 | grep -i 'entity' | cut -c1-200 | head -20
-          echo "=== RenderInfo"
-          javap -public -cp "$MC" 'net.minecraft.client.renderer.PlayerSkinRenderCache$RenderInfo' 2>&1 | cut -c1-220
-          echo "=== ResolvableProfile"
-          javap -public -cp "$MC" net.minecraft.world.item.component.ResolvableProfile 2>&1 | grep -E 'static|ResolvableProfile\(' | cut -c1-220
-
       - if: steps.build.outcome == 'failure'
         run: exit 1
 

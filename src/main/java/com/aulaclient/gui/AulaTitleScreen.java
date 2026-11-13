@@ -5,6 +5,12 @@ import com.aulaclient.config.AulaConfig;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.realmsclient.RealmsMainScreen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.model.Model;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.world.entity.player.PlayerModelType;
+import net.minecraft.world.entity.player.PlayerSkin;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
@@ -34,6 +40,19 @@ public class AulaTitleScreen extends Screen {
     private final long openedAt = System.currentTimeMillis();
     private long enteredAt = entered ? openedAt - 10_000 : 0;
 
+    // ---- Charakter (laeuft herein, mit der Maus greif- und werfbar)
+    private static final int CW = 90, CH = 150;
+    private Model.Simple wideModel, slimModel;
+    private ResolvableProfile profile;
+    private boolean charReady = false;
+    private double px, py, vx, vy;          // Mittelpunkt + Geschwindigkeit
+    private float rotY = 30f, rotX = -5f, spin;
+    private boolean grabbed = false;
+    private double grabDX, grabDY;
+    private long lastFrame = 0, releasedAt = 0, walkStart = 0;
+    private boolean charStarted = false;
+    private boolean walking = false, flying = false;
+
     public AulaTitleScreen() {
         super(Component.literal(AulaClient.NAME));
     }
@@ -50,6 +69,92 @@ public class AulaTitleScreen extends Screen {
         itemY = new int[items.size()];
         itemW = new int[items.size()];
         itemH = new int[items.size()];
+        try {
+            wideModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER), RenderTypes::entityTranslucent);
+            slimModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER_SLIM), RenderTypes::entityTranslucent);
+            profile = ResolvableProfile.createResolved(minecraft.getGameProfile());
+            charReady = true;
+        } catch (Throwable t) {
+            charReady = false;
+        }
+    }
+
+    private double homeX() { return width * 0.82; }
+    private double homeY() { return height / 2.0 + 10; }
+
+    private void startWalk() {
+        walkStart = System.currentTimeMillis() + 250;
+        walking = true;
+        px = width + CW;
+        py = homeY();
+    }
+
+    private boolean overChar(double mx, double my) {
+        return mx >= px - CW / 2.0 && mx <= px + CW / 2.0 && my >= py - CH / 2.0 && my <= py + CH / 2.0;
+    }
+
+    private void updateChar(int mx, int my, long now) {
+        float dt = lastFrame == 0 ? 0.016f : Math.min(0.05f, (now - lastFrame) / 1000f);
+        lastFrame = now;
+        double hx = homeX(), hy = homeY();
+        if (walking) {
+            float k = clamp01((now - walkStart) / 2400f);
+            float e = 1f - (float) Math.pow(1f - k, 3);
+            px = (width + CW) + (hx - (width + CW)) * e;
+            py = hy;
+            vx = vy = 0;
+            // Lauf-Wippen, dreht sich beim Ankommen zum Menue
+            rotY = -40f + 70f * e + (k < 1f ? 14f * (float) Math.sin(now / 130.0) : 0f);
+            rotX = -5f + (k < 1f ? 4f * (float) Math.sin(now / 65.0) : 0f);
+            if (k >= 1f) walking = false;
+            return;
+        }
+        if (grabbed) {
+            double tx = mx - grabDX, ty = my - grabDY;
+            double nx = px + (tx - px) * Math.min(1.0, dt * 22), ny = py + (ty - py) * Math.min(1.0, dt * 22);
+            vx = (nx - px) / dt * 0.6 + vx * 0.4;
+            vy = (ny - py) / dt * 0.6 + vy * 0.4;
+            px = nx; py = ny;
+            rotX += (-5f + (float) (vy * -0.02) - rotX) * Math.min(1f, dt * 8);
+            rotY += (float) (vx * 0.04) * dt * 10f;
+            return;
+        }
+        if (flying) {
+            vy += 1100 * dt;
+            px += vx * dt; py += vy * dt;
+            double floor = height - 8 - CH / 2.0;
+            if (py > floor) { py = floor; vy = -vy * 0.55; vx *= 0.85; if (Math.abs(vy) < 40) vy = 0; spin *= 0.85f; }
+            if (px < CW / 2.0) { px = CW / 2.0; vx = Math.abs(vx) * 0.6; spin = -spin * 0.7f; }
+            if (px > width - CW / 2.0) { px = width - CW / 2.0; vx = -Math.abs(vx) * 0.6; spin = -spin * 0.7f; }
+            if (py < CH / 2.0) { py = CH / 2.0; vy = Math.abs(vy) * 0.6; }
+            rotY += spin * dt;
+            rotX += (-5f - rotX) * Math.min(1f, dt * 3);
+            if (now - releasedAt > 1700) flying = false;
+        } else {
+            // zurueck zur Ausgangsposition
+            vx += (hx - px) * 14 * dt; vy += (hy - py) * 14 * dt;
+            vx *= Math.max(0, 1 - 6 * dt); vy *= Math.max(0, 1 - 6 * dt);
+            px += vx * dt; py += vy * dt;
+            float target = 30f;
+            float diff = ((rotY - target) % 360f + 540f) % 360f - 180f;
+            rotY -= diff * Math.min(1f, dt * 5);
+            rotX += (-5f - rotX) * Math.min(1f, dt * 5);
+            spin = 0;
+        }
+    }
+
+    private void drawChar(GuiGraphicsExtractor g, int mx, int my, long now, float alpha) {
+        if (!charReady || alpha <= 0f) return;
+        try {
+            updateChar(mx, my, now);
+            PlayerSkin skin = minecraft.playerSkinRenderCache().getOrDefault(profile).playerSkin();
+            Model.Simple m = skin.model() == PlayerModelType.SLIM ? slimModel : wideModel;
+            float scale = 0.97f * CH / 2.125f;
+            g.skin(m, skin.body().texturePath(), scale, rotX, rotY, -0.0625f,
+                    (int) (px - CW / 2.0), (int) (py - CH / 2.0), (int) (px + CW / 2.0), (int) (py + CH / 2.0));
+        } catch (Throwable t) {
+            charReady = false;
+        }
     }
 
     // ---------------------------------------------------------------- helpers
@@ -146,9 +251,11 @@ public class AulaTitleScreen extends Screen {
             float m = clamp01((now - enteredAt) / 500f);
             drawLogo(g, cx, height / 2 - 118, 56, m);
             drawMenu(g, mx, my, cx, height / 2 - 28, m);
+            if (!charStarted) { charStarted = true; startWalk(); }
+            drawChar(g, mx, my, now, m);
         }
 
-        g.text(font, "Aula Client 1.5.0  ·  Minecraft 26.3", 8, height - 14, argb(0x8A8A96, 0.6f * fade), false);
+        g.text(font, "Aula Client 1.6.0  ·  Minecraft 26.3", 8, height - 14, argb(0x8A8A96, 0.6f * fade), false);
     }
 
     private void drawMenu(GuiGraphicsExtractor g, int mx, int my, int cx, int startY, float alpha) {
@@ -199,6 +306,12 @@ public class AulaTitleScreen extends Screen {
                 return true;
             }
             int mx = (int) event.x(), my = (int) event.y();
+            if (charReady && !walking && overChar(mx, my)) {
+                grabbed = true; flying = false;
+                grabDX = mx - px; grabDY = my - py;
+                vx = vy = 0;
+                return true;
+            }
             int cx = width / 2;
             for (int i = 0; i < items.size(); i++) {
                 if (itemW[i] > 0 && mx >= cx - itemW[i] / 2 && mx <= cx + itemW[i] / 2
@@ -209,6 +322,20 @@ public class AulaTitleScreen extends Screen {
             }
         }
         return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (grabbed && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+            grabbed = false;
+            flying = true;
+            releasedAt = System.currentTimeMillis();
+            vx = Math.max(-2500, Math.min(2500, vx));
+            vy = Math.max(-2500, Math.min(2500, vy));
+            spin = (float) (vx * 0.5 + (vy < 0 ? -200 : 200) * Math.signum(vx == 0 ? 1 : vx));
+            return true;
+        }
+        return super.mouseReleased(event);
     }
 
     @Override
