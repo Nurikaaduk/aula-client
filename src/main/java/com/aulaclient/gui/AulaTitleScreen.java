@@ -84,11 +84,12 @@ public class AulaTitleScreen extends Screen {
     }
     private boolean charReady = false;
     private double px, py, vx, vy;          // Mittelpunkt + Geschwindigkeit
-    private float rotY = 30f, rotX = -5f, spin;
+    private float rotY = REST_YAW, rotX = -5f, spin;
     private boolean grabbed = false;
     private double grabDX, grabDY;
     private long lastFrame = 0, releasedAt = 0, walkStart = 0;
-    private static final float WALK_YAW = 80f;   // Blickrichtung beim Laufen nach links (Vorzeichen ggf. tauschen)
+    private static final float WALK_YAW = -80f;
+    private static final float REST_YAW = -30f;   // Blickrichtung beim Laufen nach links (Vorzeichen ggf. tauschen)
     private float limbArmL, limbArmR, limbLegL, limbLegR;
     private float tArmL, tArmR, tLegL, tLegR;
     private boolean charStarted = false;
@@ -154,7 +155,7 @@ public class AulaTitleScreen extends Screen {
             vx = vy = 0;
             float turn = clamp01((k - 0.82f) / 0.18f);             // am Ende zum Menue drehen
             turn = turn * turn * (3 - 2 * turn);
-            rotY = WALK_YAW + (30f - WALK_YAW) * turn;
+            rotY = WALK_YAW + (REST_YAW - WALK_YAW) * turn;
             rotX = -5f;
             tLegL = (float) Math.sin(ph) * 0.95f * amp;  tLegR = -tLegL;
             tArmL = -tLegL * 0.8f;                        tArmR = tLegL * 0.8f;
@@ -169,7 +170,7 @@ public class AulaTitleScreen extends Screen {
             px = nx; py = ny;
             float tilt = (float) Math.max(-25, Math.min(25, -vy * 0.02));
             rotX += (-5f + tilt - rotX) * Math.min(1f, dt * 8);
-            float want = 30f + (float) Math.max(-70, Math.min(70, vx * 0.06));   // dreht sich in Zugrichtung
+            float want = REST_YAW + (float) Math.max(-70, Math.min(70, vx * 0.06));   // dreht sich in Zugrichtung
             float dY = ((want - rotY) % 360f + 540f) % 360f - 180f;
             rotY += dY * Math.min(1f, dt * 7);
             double sw = Math.sin(now / 110.0);
@@ -196,7 +197,7 @@ public class AulaTitleScreen extends Screen {
             vx += (hx - px) * 14 * dt; vy += (hy - py) * 14 * dt;
             vx *= Math.max(0, 1 - 6 * dt); vy *= Math.max(0, 1 - 6 * dt);
             px += vx * dt; py += vy * dt;
-            float target = 30f;
+            float target = REST_YAW;
             float diff = ((rotY - target) % 360f + 540f) % 360f - 180f;
             rotY -= diff * Math.min(1f, dt * 5);
             rotX += (-5f - rotX) * Math.min(1f, dt * 5);
@@ -210,17 +211,17 @@ public class AulaTitleScreen extends Screen {
         if (!charReady || alpha <= 0f) return;
         double tt = now / 1000.0;
         int cxf = (int) px;
-        int base = (int) (py - CH / 2.0) + CH / 20;
-        int fh = (int) (CH * 0.62);
+        int base = (int) (py - CH / 2.0) - CH / 40;
+        int fh = (int) (CH * 0.5);
         int ww = (int) (CW * 0.30);
-        final int N = 44;
+        final int N = 72;
         for (int i = 0; i < N; i++) {
             double ph = (tt * (0.55 + rnd(i, 5) * 0.5) + rnd(i, 6)) % 1.0;      // Lebensalter 0..1
             double wob = Math.sin(tt * 4.0 + i * 1.7) * ww * 0.55 * ph + (rnd(i, 7) - 0.5) * ww * 0.5 * (1 - ph);
             int x = cxf + (int) wob;
             int y = base - (int) (Math.pow(ph, 0.85) * fh);
             float life = (float) (1.0 - ph);
-            int sz = Math.max(2, (int) ((CW * 0.34) * (0.25 + life * 0.75) * (0.7 + rnd(i, 8) * 0.5)));
+            int sz = Math.max(2, (int) ((CW * 0.17) * (0.25 + life * 0.75) * (0.7 + rnd(i, 8) * 0.5)));
             int rgb = ph < 0.25 ? 0xF2FF9A : ph < 0.55 ? 0xA6EA2C : ph < 0.8 ? 0x3FB01C : 0x1E6A12;
             float a = life * life * alpha;
             g.fill(x - sz, y - sz, x + sz, y + sz, argb(rgb, 0.10f * a));
@@ -267,8 +268,8 @@ public class AulaTitleScreen extends Screen {
             float scale = 0.97f * CH / 2.125f;
             int rx0 = (int) (px - CW / 2.0), ry0 = (int) (py - CH / 2.0), rx1 = (int) (px + CW / 2.0), ry1 = (int) (py + CH / 2.0);
             g.skin(m, skin.body().texturePath(), scale, rotX, rotY, -0.0625f, rx0, ry0, rx1, ry1);
-            int ex = CW, ey = CH / 2;
-            g.skin(hornModel, HORN_TEX, scale, rotX, rotY, -0.0625f, rx0 - ex, ry0 - ey, rx1 + ex, ry1 + ey);
+            int ex = CW, ey = CH;
+            g.skin(hornModel, HORN_TEX, scale, rotX, rotY, -0.0625f, rx0 - ex, ry0 - ey, rx1 + ex, ry1);
         } catch (Throwable t) {
             charReady = false;
         }
@@ -429,7 +430,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.9.1)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.9.2)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
