@@ -6,6 +6,14 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.realmsclient.RealmsMainScreen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.model.Model;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.client.model.geom.builders.PartPose;
+import net.minecraft.resources.Identifier;
+import java.util.function.Supplier;
+import net.minecraft.client.renderer.PlayerSkinRenderCache;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.entity.player.PlayerModelType;
@@ -43,14 +51,35 @@ public class AulaTitleScreen extends Screen {
     // ---- Charakter (laeuft herein, mit der Maus greif- und werfbar)
     private int CW = 90, CH = 150;
     private Model.Simple wideModel, slimModel;
-    private ResolvableProfile profile;
+    private Supplier<PlayerSkinRenderCache.RenderInfo> skinLookup;
+    private Model.Simple hornModel;
+    private static final Identifier HORN_TEX = Identifier.fromNamespaceAndPath("aula-client", "textures/gui/horns_model.png");
+
+    /** Eigenes 3D-Hornmodell (gebogene, segmentierte Hoerner links/rechts vom Kopf). */
+    private static Model.Simple buildHorns() {
+        MeshDefinition mesh = new MeshDefinition();
+        PartDefinition root = mesh.getRoot();
+        for (int side = -1; side <= 1; side += 2) {
+            for (int i = 0; i < 7; i++) {
+                float sz = 3.2f - i * 0.38f;
+                float x = side * (4.2f + i * 1.5f + i * i * 0.12f);
+                float y = -6.5f - i * 2.5f;
+                float rot = -side * (0.35f + i * 0.2f);
+                int u = i >= 5 ? 32 : 0;
+                root.addOrReplaceChild("horn_" + side + "_" + i,
+                        CubeListBuilder.create().texOffs(u, 0).addBox(-sz / 2, -sz, -sz / 2, sz, sz * 1.6f, sz),
+                        PartPose.offsetAndRotation(x, y, 0f, 0f, 0f, rot));
+            }
+        }
+        return new Model.Simple(LayerDefinition.create(mesh, 64, 32).bakeRoot(), RenderTypes::entityTranslucent);
+    }
     private boolean charReady = false;
     private double px, py, vx, vy;          // Mittelpunkt + Geschwindigkeit
     private float rotY = 30f, rotX = -5f, spin;
     private boolean grabbed = false;
     private double grabDX, grabDY;
     private long lastFrame = 0, releasedAt = 0, walkStart = 0;
-    private static final float WALK_YAW = -80f;   // Blickrichtung beim Laufen nach links (Vorzeichen ggf. tauschen)
+    private static final float WALK_YAW = 80f;   // Blickrichtung beim Laufen nach links (Vorzeichen ggf. tauschen)
     private float limbArmL, limbArmR, limbLegL, limbLegR;
     private float tArmL, tArmR, tLegL, tLegR;
     private boolean charStarted = false;
@@ -76,7 +105,8 @@ public class AulaTitleScreen extends Screen {
         try {
             wideModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER), RenderTypes::entityTranslucent);
             slimModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER_SLIM), RenderTypes::entityTranslucent);
-            profile = ResolvableProfile.createResolved(minecraft.getGameProfile());
+            skinLookup = minecraft.playerSkinRenderCache().createLookup(ResolvableProfile.createResolved(minecraft.getGameProfile()));
+            hornModel = buildHorns();
             charReady = true;
         } catch (Throwable t) {
             charReady = false;
@@ -166,16 +196,24 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
-    /** Hoerner-Cosmetic (Bild des Nutzers) ueber dem Kopf; wippt leicht. */
+    /** Gruene Flamme zwischen den Hoernern (nur Flaechen, guenstig). */
     private void drawFlame(GuiGraphicsExtractor g, long now, float alpha) {
         if (!charReady || alpha <= 0f) return;
-        int size = (int) (CW * 2.0);
-        double bob = Math.sin(now / 420.0) * 2.0;
-        int x = (int) px - size / 2;
-        // Hoernerunterkante im Bild liegt bei ~75 % der Hoehe -> dort auf die Kopfoberkante setzen
-        int headTop = (int) (py - CH / 2.0) + CH / 10;
-        int y = (int) (headTop - size * 0.78 + bob);
-        Ui.horns(g, x, y, size, size);
+        double tt = now / 1000.0;
+        int cxf = (int) px;
+        int base = (int) (py - CH / 2.0) + CH / 16;
+        int fh = Math.max(40, CH / 3);
+        int[][] layers = {{0x2E9B1E, 0}, {0x8CE02A, 1}, {0xE8FF8A, 2}};
+        for (int[] L : layers) {
+            int hh = (int) (fh * (1.0 - L[1] * 0.28) * (1 + 0.06 * Math.sin(tt * 9 + L[1])));
+            int ww = (int) (CW * (0.24 - L[1] * 0.06));
+            for (int r = 0; r < hh; r += 2) {
+                double f = r / (double) hh;
+                double wdt = ww * Math.sin(Math.min(1.0, f * 1.15 + 0.12) * Math.PI * 0.5) * (1 - f * f);
+                int sway = (int) (Math.sin(tt * 6 + f * 4 + L[1]) * ww * 0.18 * f);
+                g.fill(cxf + sway - (int) wdt, base - r - 2, cxf + sway + (int) wdt + 1, base - r, argb(L[0], (0.35f + 0.15f * L[1]) * alpha));
+            }
+        }
     }
 
     private void drawShadow(GuiGraphicsExtractor g, float alpha) {
@@ -196,7 +234,7 @@ public class AulaTitleScreen extends Screen {
         if (!charReady || alpha <= 0f) return;
         try {
             updateChar(mx, my, now);
-            PlayerSkin skin = minecraft.playerSkinRenderCache().getOrDefault(profile).playerSkin();
+            PlayerSkin skin = skinLookup.get().playerSkin();
             Model.Simple m = skin.model() == PlayerModelType.SLIM ? slimModel : wideModel;
             float f = 0.35f;
             limbArmL += (tArmL - limbArmL) * f; limbArmR += (tArmR - limbArmR) * f;
@@ -208,8 +246,9 @@ public class AulaTitleScreen extends Screen {
                 m.root().getChild("right_leg").xRot = limbLegR;
             } catch (Throwable ignored) { }
             float scale = 0.97f * CH / 2.125f;
-            g.skin(m, skin.body().texturePath(), scale, rotX, rotY, -0.0625f,
-                    (int) (px - CW / 2.0), (int) (py - CH / 2.0), (int) (px + CW / 2.0), (int) (py + CH / 2.0));
+            int rx0 = (int) (px - CW / 2.0), ry0 = (int) (py - CH / 2.0), rx1 = (int) (px + CW / 2.0), ry1 = (int) (py + CH / 2.0);
+            g.skin(m, skin.body().texturePath(), scale, rotX, rotY, -0.0625f, rx0, ry0, rx1, ry1);
+            g.skin(hornModel, HORN_TEX, scale, rotX, rotY, -0.0625f, rx0, ry0, rx1, ry1);
         } catch (Throwable t) {
             charReady = false;
         }
@@ -370,7 +409,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.8.0)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.9.0)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
