@@ -22,24 +22,23 @@ jobs:
         continue-on-error: true
 
       - name: Dump Minecraft API (debug)
-        if: steps.build.outcome == 'failure'
+        if: always()
         run: |
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== CharacterEvent"
-          javap -public -cp "$MC" net.minecraft.client.input.CharacterEvent
-          echo "=== KeyEvent"
-          javap -public -cp "$MC" net.minecraft.client.input.KeyEvent
-          echo "=== InputConstants keys"
-          javap -public -constants -cp "$MC" com.mojang.blaze3d.platform.InputConstants | grep -E 'KEY_(BACKSPACE|ESCAPE|RETURN|ENTER|DELETE|TAB|SPACE|UP|DOWN)\b'
-          echo "=== GuiEventListener keyboard"
-          javap -public -cp "$MC" net.minecraft.client.gui.components.events.GuiEventListener | grep -Ei 'key|char|focus'
-          echo "=== Minecraft getUser"
-          javap -public -cp "$MC" net.minecraft.client.Minecraft | grep -Ei 'getUser'
-          javap -public -cp "$MC" net.minecraft.client.User | grep -Ei 'getName|name'
-          echo "=== Font"
-          javap -public -cp "$MC" net.minecraft.client.gui.Font | grep -E 'plainSubstrByWidth|width\(java.lang.String'
-          echo "=== CursorTypes"
-          javap -public -constants -cp "$MC" com.mojang.blaze3d.platform.cursor.CursorTypes | head -20
+          echo "=== class presence"
+          unzip -l "$MC" | awk '{print $4}' | grep -E 'screens/TitleScreen.class|SelectWorldScreen.class|JoinMultiplayerScreen.class|screens/options/OptionsScreen.class|RealmsMainScreen.class|net/minecraft/SharedConstants.class|screens/Screen.class$' 
+          for c in net.minecraft.client.gui.screens.TitleScreen net.minecraft.client.gui.screens.worldselection.SelectWorldScreen net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen net.minecraft.client.gui.screens.options.OptionsScreen com.mojang.realmsclient.RealmsMainScreen; do
+            echo "=== $c"; javap -public -cp "$MC" "$c" 2>&1 | grep -E 'Error|class |  public .*\(net.minecraft.client.gui.screens.Screen|OptionsScreen\(' | head -8
+          done
+          echo "=== Screen close/init"
+          javap -p -cp "$MC" net.minecraft.client.gui.screens.Screen | grep -Ei 'closeOnEsc|onClose|init\(|removed|added|tick'
+          echo "=== Minecraft stop"
+          javap -public -cp "$MC" net.minecraft.client.Minecraft | grep -E ' stop\(|isRunning|getVersion'
+          echo "=== Screen fields"
+          javap -p -cp "$MC" net.minecraft.client.gui.screens.Screen | grep -E ' (width|height|minecraft|font|title);'
+          echo "=== Fabric screen api"
+          J=$(find ~/.gradle/caches/modules-2 -name 'fabric-screen-api-v1*.jar' | grep -v sources | head -1)
+          javap -public -cp "$J" net.fabricmc.fabric.api.client.screen.v1.ScreenEvents 2>&1 | head -20
 
       - if: steps.build.outcome == 'failure'
         run: exit 1
