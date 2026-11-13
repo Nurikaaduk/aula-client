@@ -22,16 +22,24 @@ jobs:
         continue-on-error: true
 
       - name: Dump Minecraft API (debug)
-        if: steps.build.outcome == 'failure'
+        if: always()
         run: |
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== InputConstants mouse"
-          javap -public -constants -cp "$MC" com.mojang.blaze3d.platform.InputConstants | grep -Ei 'MOUSE'
-          echo "=== MouseButtonInfo"
-          javap -public -constants -cp "$MC" net.minecraft.client.input.MouseButtonInfo
-          javap -public -constants -cp "$MC" 'net.minecraft.client.input.MouseButtonInfo$MouseButton'
-          echo "=== MouseHandler"
-          javap -p -cp "$MC" net.minecraft.client.MouseHandler | grep -Ei 'onButton|onPress|xpos|ypos|scale|mouseClicked|setup|button' | cut -c1-200
+          echo "=== CharacterEvent"
+          javap -public -cp "$MC" net.minecraft.client.input.CharacterEvent
+          echo "=== KeyEvent"
+          javap -public -cp "$MC" net.minecraft.client.input.KeyEvent
+          echo "=== InputConstants keys"
+          javap -public -constants -cp "$MC" com.mojang.blaze3d.platform.InputConstants | grep -E 'KEY_(BACKSPACE|ESCAPE|RETURN|ENTER|DELETE|TAB|SPACE|UP|DOWN)\b'
+          echo "=== GuiEventListener keyboard"
+          javap -public -cp "$MC" net.minecraft.client.gui.components.events.GuiEventListener | grep -Ei 'key|char|focus'
+          echo "=== Minecraft getUser"
+          javap -public -cp "$MC" net.minecraft.client.Minecraft | grep -Ei 'getUser'
+          javap -public -cp "$MC" net.minecraft.client.User | grep -Ei 'getName|name'
+          echo "=== Font"
+          javap -public -cp "$MC" net.minecraft.client.gui.Font | grep -E 'plainSubstrByWidth|width\(java.lang.String'
+          echo "=== CursorTypes"
+          javap -public -constants -cp "$MC" com.mojang.blaze3d.platform.cursor.CursorTypes | head -20
 
       - if: steps.build.outcome == 'failure'
         run: exit 1
