@@ -59,25 +59,30 @@ public class AulaTitleScreen extends Screen {
     private static Model.Simple buildHorns() {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
-        final int n = 10;
+        final int n = 11;
+        final float L = 1.9f;
         for (int side = -1; side <= 1; side += 2) {
+            float cx = side * 4.3f, cy = -4.2f;                       // Ansatz seitlich am Kopf
             for (int i = 0; i < n; i++) {
                 float f = i / (float) (n - 1);
-                float sz = 3.6f * (1f - 0.8f * f) + 0.6f;
-                // erst nach aussen, dann steil nach oben, Spitze leicht nach innen
-                float x = side * (4.5f + 9.5f * (float) Math.sin(f * 1.35) - 2.5f * f * f * f);
-                float y = -5.5f - 15f * (float) (1 - Math.cos(f * 1.2)) - 2f * f;
-                float rot = -side * (0.25f + 1.1f * f - 0.5f * f * f * f);
-                int u = f > 0.62f ? 32 : 0;
+                // Winkel zur Senkrechten: am Ansatz fast waagerecht nach aussen, zur Spitze hin nach oben/innen
+                float phi = 1.25f * (float) Math.pow(1f - f, 1.3) - 0.18f * f;
+                float dx = side * (float) Math.sin(phi), dy = -(float) Math.cos(phi);
+                float mx = cx + dx * L / 2, my = cy + dy * L / 2;     // Segmentmitte
+                float sz = 3.0f * (1f - 0.82f * f) + 0.5f;
+                float len = L * 1.25f;
+                float rot = side * phi;
+                int u = f > 0.6f ? 32 : 0;
                 root.addOrReplaceChild("horn_" + side + "_" + i,
-                        CubeListBuilder.create().texOffs(u, 0).addBox(-sz / 2, -sz * 0.9f, -sz / 2, sz, sz * 1.8f, sz),
-                        PartPose.offsetAndRotation(x, y, 0f, 0f, 0f, rot));
+                        CubeListBuilder.create().texOffs(u, 0).addBox(-sz / 2, -len / 2, -sz / 2, sz, len, sz),
+                        PartPose.offsetAndRotation(mx, my, 0f, 0f, 0f, rot));
                 if (i > 0 && i < n - 1) {
-                    float sp = sz * 0.55f;
+                    float sp = sz * 0.5f;
                     root.addOrReplaceChild("spike_" + side + "_" + i,
-                            CubeListBuilder.create().texOffs(32, 8).addBox(side > 0 ? sz * 0.4f : -sz * 0.4f - sp * 1.4f, -sp / 2, -sp / 2, sp * 1.4f, sp, sp),
-                            PartPose.offsetAndRotation(x, y, 0f, 0f, 0f, rot));
+                            CubeListBuilder.create().texOffs(32, 8).addBox(side > 0 ? sz / 2 : -sz / 2 - sp * 1.5f, -sp / 2, -sp / 2, sp * 1.5f, sp, sp),
+                            PartPose.offsetAndRotation(mx, my, 0f, 0f, 0f, rot));
                 }
+                cx += dx * L; cy += dy * L;
             }
         }
         return new Model.Simple(LayerDefinition.create(mesh, 64, 32).bakeRoot(), RenderTypes::entityTranslucent);
@@ -213,7 +218,7 @@ public class AulaTitleScreen extends Screen {
         int cxf = (int) px;
         int base = (int) (py - CH / 2.0) - CH / 40;
         int fh = (int) (CH * 0.5);
-        int ww = (int) (CW * 0.30);
+        int ww = (int) (CW * 0.22);
         final int N = 72;
         for (int i = 0; i < N; i++) {
             double ph = (tt * (0.55 + rnd(i, 5) * 0.5) + rnd(i, 6)) % 1.0;      // Lebensalter 0..1
@@ -221,7 +226,7 @@ public class AulaTitleScreen extends Screen {
             int x = cxf + (int) wob;
             int y = base - (int) (Math.pow(ph, 0.85) * fh);
             float life = (float) (1.0 - ph);
-            int sz = Math.max(2, (int) ((CW * 0.17) * (0.25 + life * 0.75) * (0.7 + rnd(i, 8) * 0.5)));
+            int sz = Math.max(2, (int) ((CW * 0.12) * (0.25 + life * 0.75) * (0.7 + rnd(i, 8) * 0.5)));
             int rgb = ph < 0.25 ? 0xF2FF9A : ph < 0.55 ? 0xA6EA2C : ph < 0.8 ? 0x3FB01C : 0x1E6A12;
             float a = life * life * alpha;
             g.fill(x - sz, y - sz, x + sz, y + sz, argb(rgb, 0.10f * a));
@@ -430,7 +435,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.9.2)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.9.3)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
