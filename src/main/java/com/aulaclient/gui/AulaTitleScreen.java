@@ -59,16 +59,25 @@ public class AulaTitleScreen extends Screen {
     private static Model.Simple buildHorns() {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
+        final int n = 10;
         for (int side = -1; side <= 1; side += 2) {
-            for (int i = 0; i < 7; i++) {
-                float sz = 3.2f - i * 0.38f;
-                float x = side * (4.2f + i * 1.5f + i * i * 0.12f);
-                float y = -6.5f - i * 2.5f;
-                float rot = -side * (0.35f + i * 0.2f);
-                int u = i >= 5 ? 32 : 0;
+            for (int i = 0; i < n; i++) {
+                float f = i / (float) (n - 1);
+                float sz = 3.6f * (1f - 0.8f * f) + 0.6f;
+                // erst nach aussen, dann steil nach oben, Spitze leicht nach innen
+                float x = side * (4.5f + 9.5f * (float) Math.sin(f * 1.35) - 2.5f * f * f * f);
+                float y = -5.5f - 15f * (float) (1 - Math.cos(f * 1.2)) - 2f * f;
+                float rot = -side * (0.25f + 1.1f * f - 0.5f * f * f * f);
+                int u = f > 0.62f ? 32 : 0;
                 root.addOrReplaceChild("horn_" + side + "_" + i,
-                        CubeListBuilder.create().texOffs(u, 0).addBox(-sz / 2, -sz, -sz / 2, sz, sz * 1.6f, sz),
+                        CubeListBuilder.create().texOffs(u, 0).addBox(-sz / 2, -sz * 0.9f, -sz / 2, sz, sz * 1.8f, sz),
                         PartPose.offsetAndRotation(x, y, 0f, 0f, 0f, rot));
+                if (i > 0 && i < n - 1) {
+                    float sp = sz * 0.55f;
+                    root.addOrReplaceChild("spike_" + side + "_" + i,
+                            CubeListBuilder.create().texOffs(32, 8).addBox(side > 0 ? sz * 0.4f : -sz * 0.4f - sp * 1.4f, -sp / 2, -sp / 2, sp * 1.4f, sp, sp),
+                            PartPose.offsetAndRotation(x, y, 0f, 0f, 0f, rot));
+                }
             }
         }
         return new Model.Simple(LayerDefinition.create(mesh, 64, 32).bakeRoot(), RenderTypes::entityTranslucent);
@@ -196,24 +205,34 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
-    /** Gruene Flamme zwischen den Hoernern (nur Flaechen, guenstig). */
+    /** Flamme aus vielen aufsteigenden, weich ueberlagerten Partikeln (Farbe: heiss -> kuehl, Groesse schrumpft). */
     private void drawFlame(GuiGraphicsExtractor g, long now, float alpha) {
         if (!charReady || alpha <= 0f) return;
         double tt = now / 1000.0;
         int cxf = (int) px;
-        int base = (int) (py - CH / 2.0) + CH / 16;
-        int fh = Math.max(40, CH / 3);
-        int[][] layers = {{0x2E9B1E, 0}, {0x8CE02A, 1}, {0xE8FF8A, 2}};
-        for (int[] L : layers) {
-            int hh = (int) (fh * (1.0 - L[1] * 0.28) * (1 + 0.06 * Math.sin(tt * 9 + L[1])));
-            int ww = (int) (CW * (0.24 - L[1] * 0.06));
-            for (int r = 0; r < hh; r += 2) {
-                double f = r / (double) hh;
-                double wdt = ww * Math.sin(Math.min(1.0, f * 1.15 + 0.12) * Math.PI * 0.5) * (1 - f * f);
-                int sway = (int) (Math.sin(tt * 6 + f * 4 + L[1]) * ww * 0.18 * f);
-                g.fill(cxf + sway - (int) wdt, base - r - 2, cxf + sway + (int) wdt + 1, base - r, argb(L[0], (0.35f + 0.15f * L[1]) * alpha));
-            }
+        int base = (int) (py - CH / 2.0) + CH / 20;
+        int fh = (int) (CH * 0.62);
+        int ww = (int) (CW * 0.30);
+        final int N = 44;
+        for (int i = 0; i < N; i++) {
+            double ph = (tt * (0.55 + rnd(i, 5) * 0.5) + rnd(i, 6)) % 1.0;      // Lebensalter 0..1
+            double wob = Math.sin(tt * 4.0 + i * 1.7) * ww * 0.55 * ph + (rnd(i, 7) - 0.5) * ww * 0.5 * (1 - ph);
+            int x = cxf + (int) wob;
+            int y = base - (int) (Math.pow(ph, 0.85) * fh);
+            float life = (float) (1.0 - ph);
+            int sz = Math.max(2, (int) ((CW * 0.34) * (0.25 + life * 0.75) * (0.7 + rnd(i, 8) * 0.5)));
+            int rgb = ph < 0.25 ? 0xF2FF9A : ph < 0.55 ? 0xA6EA2C : ph < 0.8 ? 0x3FB01C : 0x1E6A12;
+            float a = life * life * alpha;
+            g.fill(x - sz, y - sz, x + sz, y + sz, argb(rgb, 0.10f * a));
+            int m = Math.max(1, sz * 2 / 3);
+            g.fill(x - m, y - m, x + m, y + m, argb(rgb, 0.20f * a));
+            int c = Math.max(1, sz / 3);
+            g.fill(x - c, y - c, x + c, y + c, argb(ph < 0.4 ? 0xFFFFD0 : rgb, 0.40f * a));
         }
+        // heller Kern am Flammenfuss
+        int kc = Math.max(3, CW / 7);
+        g.fill(cxf - kc, base - kc * 2, cxf + kc, base, argb(0xEFFFB0, 0.28f * alpha));
+        g.fill(cxf - kc / 2, base - kc * 2 + 2, cxf + kc / 2, base - 2, argb(0xFFFFFF, 0.35f * alpha));
     }
 
     private void drawShadow(GuiGraphicsExtractor g, float alpha) {
@@ -248,7 +267,8 @@ public class AulaTitleScreen extends Screen {
             float scale = 0.97f * CH / 2.125f;
             int rx0 = (int) (px - CW / 2.0), ry0 = (int) (py - CH / 2.0), rx1 = (int) (px + CW / 2.0), ry1 = (int) (py + CH / 2.0);
             g.skin(m, skin.body().texturePath(), scale, rotX, rotY, -0.0625f, rx0, ry0, rx1, ry1);
-            g.skin(hornModel, HORN_TEX, scale, rotX, rotY, -0.0625f, rx0, ry0, rx1, ry1);
+            int ex = CW, ey = CH / 2;
+            g.skin(hornModel, HORN_TEX, scale, rotX, rotY, -0.0625f, rx0 - ex, ry0 - ey, rx1 + ex, ry1 + ey);
         } catch (Throwable t) {
             charReady = false;
         }
@@ -409,7 +429,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.9.0)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.9.1)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
