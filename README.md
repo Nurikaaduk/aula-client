@@ -3,7 +3,7 @@
 Eigener Fabric-Client fuer Minecraft 26.3 (Java 25). Komplett eigener Code, keine Combat-/Movement-/Automations-Module.
 
 ## Features
-- **Menue** auf Rechts-Shift mit Tabs: Module, Cosmetics, Themes
+- **Menue** auf Rechts-Shift: Sidebar (Favorites, HUD, Visuals, Cosmetics, Editor, Settings), Suchleiste, Modul-Karten mit Favoriten-Stern + Toggle, Einstellungs-Panel mit Slidern/Dropdowns/Toggles
 - **HUD-Module:** FPS, Koordinaten, Uhrzeit, CPS, Keystrokes, Ruestung (mit Haltbarkeit)
 - **Zoom** (Taste C, weich interpoliert, FOV einstellbar)
 - **Cosmetics:** eigenes Crosshair (Kreuz, Punkt, Plus, Quadrat; Groesse; Akzentfarbe oder Weiss) mit Live-Vorschau

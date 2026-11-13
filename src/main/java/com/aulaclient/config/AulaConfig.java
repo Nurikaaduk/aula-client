@@ -19,8 +19,9 @@ public class AulaConfig {
     public Map<String, Boolean> enabled = new LinkedHashMap<>();
     public Map<String, int[]> positions = new LinkedHashMap<>();
 
-    public int theme = 0;
-    public int accent = Themes.COLORS[0];
+    public int theme = 6;
+    public int accent = Themes.COLORS[6];
+    public java.util.List<String> favorites = new java.util.ArrayList<>();
 
     // Cosmetics: Crosshair
     public int crosshairStyle = 0;   // 0 Kreuz, 1 Punkt, 2 Plus (duenn), 3 Quadrat

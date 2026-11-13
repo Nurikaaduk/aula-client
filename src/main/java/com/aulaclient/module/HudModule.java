@@ -11,6 +11,8 @@ public abstract class HudModule {
     public final int defX, defY;
     public boolean enabled;
     public int x, y;
+    /** Kategorie im Menue: HUD, Visuals oder Cosmetics. */
+    public String category = "HUD";
     /** Groesse beim letzten Rendern (fuer den HUD-Editor). */
     public int w = 60, h = 14;
 
@@ -37,6 +39,11 @@ public abstract class HudModule {
         if (!on) onDisable(Minecraft.getInstance());
         AulaConfig.get().enabled.put(name, enabled);
         AulaConfig.save();
+    }
+
+    /** Einstellbare Optionen fuer das Einstellungs-Panel. */
+    public java.util.List<Setting> settings() {
+        return java.util.List.of();
     }
 
     public void onDisable(Minecraft mc) {}

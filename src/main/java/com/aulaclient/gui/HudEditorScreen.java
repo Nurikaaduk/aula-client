@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Component;
 
 /**
  * HUD-Editor: Module mit gedrueckter linker Maustaste verschieben (Raster 2px).
- * Unten: "Zuruecksetzen" setzt alle Positionen zurueck. ESC = zurueck ins Menue.
+ * Unten: "Reset positions" setzt alle Positionen zurueck. ESC = zurueck ins Menue.
  */
 public class HudEditorScreen extends Screen {
     private static final int GRID = 2;
@@ -20,7 +20,7 @@ public class HudEditorScreen extends Screen {
     private int dx, dy;
 
     public HudEditorScreen() {
-        super(Component.literal("HUD-Editor"));
+        super(Component.literal("HUD Editor"));
     }
 
     @Override
@@ -47,11 +47,11 @@ public class HudEditorScreen extends Screen {
         int bw = 110, bh = 20, bx = (width - bw) / 2, by = height - 34;
         boolean hov = mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
         g.fill(bx, by, bx + bw, by + bh, hov ? accent : 0xEE1C1C28);
-        String label = "Zuruecksetzen";
+        String label = "Reset positions";
         g.text(font, label, bx + (bw - font.width(label)) / 2, by + 6,
                 hov ? 0xFF101018 : 0xFFFFFFFF, false);
 
-        String hint = "Ziehen zum Verschieben  |  ESC: zurueck";
+        String hint = "Drag to move  |  ESC: back";
         g.text(font, hint, (width - font.width(hint)) / 2, 8, 0xFFB0B0C0, true);
     }
 

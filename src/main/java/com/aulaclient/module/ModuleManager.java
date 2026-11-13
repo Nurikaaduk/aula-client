@@ -25,12 +25,12 @@ public class ModuleManager {
     public final CharacterFx characterFx;
 
     public ModuleManager(KeyMapping zoomKey) {
-        modules.add(new SimpleText("FPS", "Zeigt die aktuellen FPS", 4, 4,
+        modules.add(new SimpleText("FPS", "Show your current frames per second", 4, 4,
                 mc -> mc.getFps() + " FPS"));
-        modules.add(new SimpleText("Koordinaten", "Zeigt XYZ-Position", 4, 20,
+        modules.add(new SimpleText("Coordinates", "Show your XYZ position", 4, 20,
                 mc -> mc.player == null ? "" : String.format("XYZ %.1f / %.1f / %.1f",
                         mc.player.getX(), mc.player.getY(), mc.player.getZ())));
-        modules.add(new SimpleText("Uhrzeit", "Zeigt die lokale Uhrzeit", 4, 36,
+        modules.add(new SimpleText("Clock", "Show the local time", 4, 36,
                 mc -> LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))));
         modules.add(new Cps());
         modules.add(new Keystrokes());
@@ -43,6 +43,12 @@ public class ModuleManager {
         modules.add(crosshair);
         modules.add(stretch);
         modules.add(characterFx);
+
+        for (HudModule m : modules) {
+            if (m instanceof Zoom || m instanceof Stretch) m.category = "Visuals";
+            else if (m instanceof Crosshair || m instanceof CharacterFx) m.category = "Cosmetics";
+            else m.category = "HUD";
+        }
     }
 
     /** Uebernimmt gespeicherten Zustand aus der Config. */
@@ -93,7 +99,7 @@ public class ModuleManager {
         private boolean lastL, lastR;
 
         Cps() {
-            super("CPS", "Klicks pro Sekunde", 4, 52);
+            super("CPS", "Show your clicks per second", 4, 52);
         }
 
         @Override
@@ -118,7 +124,7 @@ public class ModuleManager {
     /** WASD + Maustasten + Leertaste. */
     static class Keystrokes extends HudModule {
         Keystrokes() {
-            super("Keystrokes", "Zeigt gedrueckte Tasten", 4, 72);
+            super("Keystrokes", "Show pressed movement and mouse keys", 4, 72);
             w = 58;
             h = 78;
         }
@@ -150,7 +156,7 @@ public class ModuleManager {
         };
 
         Armor() {
-            super("Ruestung", "Zeigt Ruestung und Haltbarkeit", 4, 156);
+            super("Armor Status", "Show armor pieces and durability", 4, 156);
             w = 60;
             h = 72;
         }
@@ -184,8 +190,15 @@ public class ModuleManager {
         private int original = -1;
 
         Zoom(KeyMapping key) {
-            super("Zoom", "Halte die Zoom-Taste (Standard: C)", 0, 0);
+            super("Zoom", "Hold a key to zoom smoothly (default: C)", 0, 0);
             this.key = key;
+        }
+
+        @Override
+        public List<Setting> settings() {
+            AulaConfig c = AulaConfig.get();
+            return List.of(new Setting.Slider("FOV", 30, 70, 5, 0,
+                    () -> c.zoomFov, v -> c.zoomFov = (int) Math.round(v)));
         }
 
         @Override
@@ -231,7 +244,18 @@ public class ModuleManager {
     /** Eigenes Crosshair (Cosmetic). Ersetzt das Vanilla-Crosshair, solange aktiv. */
     public static class Crosshair extends HudModule {
         Crosshair() {
-            super("Crosshair", "Eigenes Crosshair (Stil, Groesse, Farbe)", 0, 0);
+            super("Custom Crosshair", "Customize the style, size and color of your crosshair", 0, 0);
+        }
+
+        @Override
+        public List<Setting> settings() {
+            AulaConfig c = AulaConfig.get();
+            return List.of(
+                    new Setting.Choice("Style", new String[]{"Cross", "Dot", "Plus", "Square"},
+                            () -> c.crosshairStyle, v -> c.crosshairStyle = v),
+                    new Setting.Slider("Size", 2, 12, 1, 0,
+                            () -> c.crosshairSize, v -> c.crosshairSize = (int) Math.round(v)),
+                    new Setting.Toggle("Accent", () -> c.crosshairAccent, v -> c.crosshairAccent = v));
         }
 
         @Override
@@ -274,7 +298,26 @@ public class ModuleManager {
     /** Stretched Resolution. Die eigentliche Arbeit macht GameRendererMixin. */
     public static class Stretch extends HudModule {
         Stretch() {
-            super("Stretched Res", "Streckt das Bild auf ein anderes Seitenverhaeltnis (z. B. 4:3)", 0, 0);
+            super("Stretched Res", "Widen the world view, keeping the HUD unchanged", 0, 0);
+        }
+
+        private static final String[] PRESETS = {"Custom", "4:3", "5:4", "1:1", "16:10", "3:2"};
+        private static final float[] RATIOS = {0f, 4f / 3f, 5f / 4f, 1f, 16f / 10f, 3f / 2f};
+
+        @Override
+        public List<Setting> settings() {
+            AulaConfig c = AulaConfig.get();
+            return List.of(
+                    new Setting.Choice("Preset", PRESETS, () -> {
+                        for (int i = 1; i < RATIOS.length; i++) {
+                            if (Math.abs(c.stretchRatio - RATIOS[i]) < 0.005f) return i;
+                        }
+                        return 0;
+                    }, v -> {
+                        if (v > 0) c.stretchRatio = RATIOS[v];
+                    }),
+                    new Setting.Slider("Ratio", 0.5, 2.5, 0.05, 2,
+                            () -> c.stretchRatio, v -> c.stretchRatio = (float) v));
         }
 
         @Override
@@ -288,9 +331,9 @@ public class ModuleManager {
 
     /** Lokale Charakter-Effekte per Partikel (Halo, Wirbel, Spur, Aura). Nur fuer dich sichtbar. */
     public static class CharacterFx extends HudModule {
-        public static final String[] STYLE_NAMES = {"Halo", "Wirbel", "Spur", "Aura"};
+        public static final String[] STYLE_NAMES = {"Halo", "Spiral", "Trail", "Aura"};
         public static final String[] PARTICLE_NAMES = {
-                "Herzen", "Funken", "Flammen", "Wolken", "Noten", "Glitzer", "Runen"
+                "Hearts", "Sparks", "Flames", "Clouds", "Notes", "Glitter", "Runes"
         };
         private static final ParticleOptions[] PARTICLES = {
                 ParticleTypes.HEART, ParticleTypes.END_ROD, ParticleTypes.FLAME, ParticleTypes.CLOUD,
@@ -300,7 +343,17 @@ public class ModuleManager {
         private int ticks;
 
         CharacterFx() {
-            super("Charakter-Effekt", "Partikel-Cosmetic um deinen Charakter (lokal)", 0, 0);
+            super("Character FX", "Particle effects around your character (only you see them)", 0, 0);
+        }
+
+        @Override
+        public List<Setting> settings() {
+            AulaConfig c = AulaConfig.get();
+            return List.of(
+                    new Setting.Choice("Style", STYLE_NAMES, () -> c.fxStyle, v -> c.fxStyle = v),
+                    new Setting.Choice("Particles", PARTICLE_NAMES, () -> c.fxParticle, v -> c.fxParticle = v),
+                    new Setting.Slider("Density", 1, 4, 1, 0,
+                            () -> c.fxDensity, v -> c.fxDensity = (int) Math.round(v)));
         }
 
         @Override
