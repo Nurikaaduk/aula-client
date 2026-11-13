@@ -148,35 +148,16 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
-    /** Eigener Flammen-/Horn-Effekt ueber dem Kopf des Charakters (billig: nur wenige fill-Aufrufe). */
+    /** Hoerner-Cosmetic (Bild des Nutzers) ueber dem Kopf; wippt leicht. */
     private void drawFlame(GuiGraphicsExtractor g, long now, float alpha) {
         if (!charReady || alpha <= 0f) return;
-        double tt = now / 1000.0;
-        int cxf = (int) px;
-        int base = (int) (py - CH / 2.0) + CH / 14;      // knapp ueber der Kopfoberkante
-        int fh = Math.max(40, CH / 3);
-        int[][] layers = {{0xFF3A00, 0}, {0xFF9A00, 1}, {0xFFE66A, 2}};
-        for (int[] L : layers) {
-            int hh = (int) (fh * (1.0 - L[1] * 0.28) * (1 + 0.06 * Math.sin(tt * 9 + L[1])));
-            int ww = (int) (CW * (0.30 - L[1] * 0.07));
-            for (int r = 0; r < hh; r += 2) {
-                double f = r / (double) hh;                 // 0 unten .. 1 Spitze
-                double wdt = ww * Math.sin(Math.min(1.0, f * 1.15 + 0.12) * Math.PI * 0.5) * (1 - f * f);
-                int sway = (int) (Math.sin(tt * 6 + f * 4 + L[1]) * ww * 0.18 * f);
-                int y = base - r;
-                g.fill(cxf + sway - (int) wdt, y - 2, cxf + sway + (int) wdt + 1, y, argb(L[0], (0.35f + 0.15f * L[1]) * alpha));
-            }
-        }
-        // Hoerner: zwei geschwungene, dunkelrote Spitzen
-        int hornCol = argb(0x8A1020, 0.95f * alpha), tip = argb(0xFF5A3C, alpha);
-        for (int side = -1; side <= 1; side += 2) {
-            for (int i = 0; i < 14; i++) {
-                int hx = cxf + side * (CW / 4 + i * 2);
-                int hy = base + CH / 22 - (int) (i * i * 0.35) ;
-                int th = Math.max(1, 5 - i / 3);
-                g.fill(hx, hy, hx + 3, hy + th, i > 11 ? tip : hornCol);
-            }
-        }
+        int size = (int) (CW * 2.0);
+        double bob = Math.sin(now / 420.0) * 2.0;
+        int x = (int) px - size / 2;
+        // Hoernerunterkante im Bild liegt bei ~75 % der Hoehe -> dort auf die Kopfoberkante setzen
+        int headTop = (int) (py - CH / 2.0) + CH / 10;
+        int y = (int) (headTop - size * 0.78 + bob);
+        Ui.horns(g, x, y, size, size);
     }
 
     private void drawShadow(GuiGraphicsExtractor g, float alpha) {
@@ -362,7 +343,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.7.1)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.7.2)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));

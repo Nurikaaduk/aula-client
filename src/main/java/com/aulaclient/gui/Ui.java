@@ -75,6 +75,13 @@ final class Ui {
     static final Identifier LOGO = Identifier.fromNamespaceAndPath("aula-client", "textures/gui/logo.png");
     static final int LOGO_W = 468, LOGO_H = 427;
 
+    static final Identifier HORNS = Identifier.fromNamespaceAndPath("aula-client", "textures/gui/horns.png");
+
+    /** Hoerner-Cosmetic (250x250) in Rechteck (x, y, w, h). */
+    static void horns(GuiGraphicsExtractor g, int x, int y, int w, int h) {
+        g.blit(RenderPipelines.GUI_TEXTURED, HORNS, x, y, 0f, 0f, w, h, 250, 250, 250, 250);
+    }
+
     /** Zeichnet das Logo skaliert in das Rechteck (x, y, w, h). */
     static void logo(GuiGraphicsExtractor g, int x, int y, int w, int h) {
         g.blit(RenderPipelines.GUI_TEXTURED, LOGO, x, y, 0f, 0f, w, h, LOGO_W, LOGO_H, LOGO_W, LOGO_H);
