@@ -22,12 +22,25 @@ jobs:
         continue-on-error: true
 
       - name: Dump Minecraft API (debug)
-        if: steps.build.outcome == 'failure'
+        if: always()
         run: |
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== RenderPipelines"
-          unzip -l "$MC" | awk '{print $4}' | grep -E 'RenderPipelines.class'
-          javap -public -cp "$MC" net.minecraft.client.renderer.RenderPipelines 2>&1 | grep -E 'GUI_TEXTURED|Error' | head
+          echo "=== PlayerSkinWidget (members)"
+          javap -p -cp "$MC" net.minecraft.client.gui.components.PlayerSkinWidget 2>&1 | cut -c1-230
+          echo "=== PlayerSkinWidget (code: calls)"
+          javap -p -c -cp "$MC" net.minecraft.client.gui.components.PlayerSkinWidget 2>&1 | grep -E '^  [a-z].*\(|invoke|getfield|putfield|new ' | sed -E 's/^\s+[0-9]+: //' | cut -c1-210 | head -150
+          echo "=== Model.Simple"
+          javap -p -cp "$MC" 'net.minecraft.client.model.Model$Simple' 2>&1 | cut -c1-200
+          echo "=== Model"
+          javap -public -cp "$MC" net.minecraft.client.model.Model 2>&1 | cut -c1-200 | head -30
+          echo "=== PlayerSkin"
+          javap -public -cp "$MC" net.minecraft.world.entity.player.PlayerSkin 2>&1 | cut -c1-200
+          echo "=== Minecraft skin getters"
+          javap -public -cp "$MC" net.minecraft.client.Minecraft | grep -Ei 'skin|getEntityModels|getGameProfile|modelManager'
+          echo "=== PlayerSkinRenderCache"
+          javap -public -cp "$MC" net.minecraft.client.renderer.PlayerSkinRenderCache 2>&1 | cut -c1-220 | head -30
+          echo "=== ModelLayers PLAYER"
+          javap -public -cp "$MC" net.minecraft.client.model.geom.ModelLayers 2>&1 | grep -E ' PLAYER' | head
 
       - if: steps.build.outcome == 'failure'
         run: exit 1
