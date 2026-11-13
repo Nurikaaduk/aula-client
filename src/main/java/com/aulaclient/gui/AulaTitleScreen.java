@@ -50,6 +50,9 @@ public class AulaTitleScreen extends Screen {
     private boolean grabbed = false;
     private double grabDX, grabDY;
     private long lastFrame = 0, releasedAt = 0, walkStart = 0;
+    private static final float WALK_YAW = -80f;   // Blickrichtung beim Laufen nach links (Vorzeichen ggf. tauschen)
+    private float limbArmL, limbArmR, limbLegL, limbLegR;
+    private float tArmL, tArmR, tLegL, tLegR;
     private boolean charStarted = false;
     private boolean walking = false, flying = false;
 
@@ -103,14 +106,19 @@ public class AulaTitleScreen extends Screen {
         lastFrame = now;
         double hx = homeX(), hy = homeY();
         if (walking) {
-            float k = clamp01((now - walkStart) / 2400f);
-            float e = 1f - (float) Math.pow(1f - k, 3);
+            float k = clamp01((now - walkStart) / 3200f);
+            float e = 1f - (float) Math.pow(1f - k, 2.2);
             px = (width + CW) + (hx - (width + CW)) * e;
-            py = hy;
+            float amp = (float) Math.min(1.0, (1 - k) * 4.0);      // Schritte werden beim Ankommen kleiner
+            double ph = (now - walkStart) / 130.0;
+            py = hy - Math.abs(Math.sin(ph)) * 3.0 * amp;
             vx = vy = 0;
-            // Lauf-Wippen, dreht sich beim Ankommen zum Menue
-            rotY = -40f + 70f * e + (k < 1f ? 14f * (float) Math.sin(now / 130.0) : 0f);
-            rotX = -5f + (k < 1f ? 4f * (float) Math.sin(now / 65.0) : 0f);
+            float turn = clamp01((k - 0.82f) / 0.18f);             // am Ende zum Menue drehen
+            turn = turn * turn * (3 - 2 * turn);
+            rotY = WALK_YAW + (30f - WALK_YAW) * turn;
+            rotX = -5f;
+            tLegL = (float) Math.sin(ph) * 0.95f * amp;  tLegR = -tLegL;
+            tArmL = -tLegL * 0.8f;                        tArmR = tLegL * 0.8f;
             if (k >= 1f) walking = false;
             return;
         }
@@ -120,8 +128,14 @@ public class AulaTitleScreen extends Screen {
             vx = (nx - px) / dt * 0.6 + vx * 0.4;
             vy = (ny - py) / dt * 0.6 + vy * 0.4;
             px = nx; py = ny;
-            rotX += (-5f + (float) (vy * -0.02) - rotX) * Math.min(1f, dt * 8);
-            rotY += (float) (vx * 0.04) * dt * 10f;
+            float tilt = (float) Math.max(-25, Math.min(25, -vy * 0.02));
+            rotX += (-5f + tilt - rotX) * Math.min(1f, dt * 8);
+            float want = 30f + (float) Math.max(-70, Math.min(70, vx * 0.06));   // dreht sich in Zugrichtung
+            float dY = ((want - rotY) % 360f + 540f) % 360f - 180f;
+            rotY += dY * Math.min(1f, dt * 7);
+            double sw = Math.sin(now / 110.0);
+            tArmL = -2.5f + (float) sw * 0.35f; tArmR = -2.5f - (float) sw * 0.35f;   // Arme hoch, wie am Kopf gehalten
+            tLegL = (float) sw * 0.5f;          tLegR = -(float) sw * 0.5f;
             return;
         }
         if (flying) {
@@ -134,6 +148,9 @@ public class AulaTitleScreen extends Screen {
             if (py < CH / 2.0) { py = CH / 2.0; vy = Math.abs(vy) * 0.6; }
             rotY += spin * dt;
             rotX += (-5f - rotX) * Math.min(1f, dt * 3);
+            double fl = Math.sin(now / 70.0);
+            tArmL = (float) fl * 1.6f; tArmR = -(float) fl * 1.6f;
+            tLegL = -(float) fl * 1.1f; tLegR = (float) fl * 1.1f;
             if (now - releasedAt > 1700) flying = false;
         } else {
             // zurueck zur Ausgangsposition
@@ -145,6 +162,7 @@ public class AulaTitleScreen extends Screen {
             rotY -= diff * Math.min(1f, dt * 5);
             rotX += (-5f - rotX) * Math.min(1f, dt * 5);
             spin = 0;
+            tArmL = tArmR = tLegL = tLegR = 0;
         }
     }
 
@@ -180,6 +198,15 @@ public class AulaTitleScreen extends Screen {
             updateChar(mx, my, now);
             PlayerSkin skin = minecraft.playerSkinRenderCache().getOrDefault(profile).playerSkin();
             Model.Simple m = skin.model() == PlayerModelType.SLIM ? slimModel : wideModel;
+            float f = 0.35f;
+            limbArmL += (tArmL - limbArmL) * f; limbArmR += (tArmR - limbArmR) * f;
+            limbLegL += (tLegL - limbLegL) * f; limbLegR += (tLegR - limbLegR) * f;
+            try {
+                m.root().getChild("left_arm").xRot = limbArmL;
+                m.root().getChild("right_arm").xRot = limbArmR;
+                m.root().getChild("left_leg").xRot = limbLegL;
+                m.root().getChild("right_leg").xRot = limbLegR;
+            } catch (Throwable ignored) { }
             float scale = 0.97f * CH / 2.125f;
             g.skin(m, skin.body().texturePath(), scale, rotX, rotY, -0.0625f,
                     (int) (px - CW / 2.0), (int) (py - CH / 2.0), (int) (px + CW / 2.0), (int) (py + CH / 2.0));
@@ -343,7 +370,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.7.2)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.8.0)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
