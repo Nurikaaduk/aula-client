@@ -106,17 +106,16 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
-    private void drawLogo(GuiGraphicsExtractor g, int centerX, int y, float alpha) {
-        int accent = AulaConfig.get().accent;
-        Ui.rr(g, centerX - 16, y, 32, 32, 8, argb(accent, alpha));
+    /** Logo (Textur) + Titel darunter; y = Oberkante, logoW = Breite des Logos. */
+    private void drawLogo(GuiGraphicsExtractor g, int centerX, int y, int logoW, float alpha) {
+        int logoH = Math.round(logoW * (float) Ui.LOGO_H / Ui.LOGO_W);
+        Ui.logo(g, centerX - logoW / 2, y, logoW, logoH);
+        if (alpha < 1f) {
+            // Einblenden: dunkle Flaeche ueber dem Logo wird ausgeblendet
+            g.fill(centerX - logoW / 2, y, centerX + logoW / 2, y + logoH, argb(0x08080C, 1f - alpha));
+        }
         g.pose().pushMatrix();
-        g.pose().translate(centerX, y + 8);
-        g.pose().scale(2f, 2f);
-        g.centeredText(font, "A", 0, 0, argb(0x111116, alpha));
-        g.pose().popMatrix();
-
-        g.pose().pushMatrix();
-        g.pose().translate(centerX, y + 42);
+        g.pose().translate(centerX, y + logoH + 10);
         g.pose().scale(1.6f, 1.6f);
         g.centeredText(font, AulaClient.NAME, 0, 0, argb(0xFFFFFF, alpha));
         g.pose().popMatrix();
@@ -137,7 +136,7 @@ public class AulaTitleScreen extends Screen {
         int cx = width / 2;
 
         if (!entered) {
-            drawLogo(g, cx, height / 2 - 42, fade);
+            drawLogo(g, cx, height / 2 - 82, 80, fade);
             String s = "Press to enter";
             int w = font.width(s);
             float pulse = 0.7f + 0.3f * (float) Math.sin(t * 2.2);
@@ -145,11 +144,11 @@ public class AulaTitleScreen extends Screen {
             g.fill(cx - w / 2, height / 2 + 51, cx + w / 2, height / 2 + 52, argb(0xFFFFFF, 0.5f * fade));
         } else {
             float m = clamp01((now - enteredAt) / 500f);
-            drawLogo(g, cx, height / 2 - 92, m);
+            drawLogo(g, cx, height / 2 - 118, 56, m);
             drawMenu(g, mx, my, cx, height / 2 - 28, m);
         }
 
-        g.text(font, "Aula Client 1.4.0  ·  Minecraft 26.3", 8, height - 14, argb(0x8A8A96, 0.6f * fade), false);
+        g.text(font, "Aula Client 1.5.0  ·  Minecraft 26.3", 8, height - 14, argb(0x8A8A96, 0.6f * fade), false);
     }
 
     private void drawMenu(GuiGraphicsExtractor g, int mx, int my, int cx, int startY, float alpha) {

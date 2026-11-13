@@ -23,6 +23,8 @@ public class AulaConfig {
     public int accent = Themes.COLORS[6];
     public java.util.List<String> favorites = new java.util.ArrayList<>();
     public boolean customTitle = true;
+    /** Deckkraft der Menue-Flaechen (0.3 .. 1.0). */
+    public float uiOpacity = 0.72f;
 
     // Cosmetics: Crosshair
     public int crosshairStyle = 0;   // 0 Kreuz, 1 Punkt, 2 Plus (duenn), 3 Quadrat

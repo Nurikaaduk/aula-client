@@ -28,11 +28,7 @@ public class AulaScreen extends Screen {
     private static final String[] PAGES = {"Favorites", "HUD", "Visuals", "Cosmetics"};
     private static String page = "Visuals";
 
-    private static final int PANEL = 0xF2101016;
-    private static final int BORDER = 0x55FFFFFF;
-    private static final int CARD = 0xFF18181F;
-    private static final int CARD_HOVER = 0xFF20202A;
-    private static final int FIELD = 0xFF0E0E13;
+    private static final int BORDER = 0x66FFFFFF;
     private static final int TXT = 0xFFF2F2F7;
     private static final int TXT2 = 0xFF8B8B9A;
     private static final int TXT3 = 0xFF5E5E6B;
@@ -42,6 +38,19 @@ public class AulaScreen extends Screen {
     private record Region(int x, int y, int w, int h, DoubleConsumer click) {}
 
     private final List<Region> regions = new ArrayList<>();
+
+    private float opacity = 0.72f;
+
+    private int tint(int rgb, float a) {
+        return Ui.argb(rgb, a * opacity);
+    }
+
+    private int pPanel() { return tint(0x0E0E14, 1.0f); }
+    private int pCard() { return tint(0x1A1A22, 0.85f); }
+    private int pCardHover() { return tint(0x2A2A36, 0.95f); }
+    private int pField() { return tint(0x08080C, 0.85f); }
+    private int pSel() { return tint(0x262631, 0.95f); }
+    private int pHover() { return tint(0x1A1A22, 0.7f); }
 
     private HudModule selected;
     private String query = "";
@@ -126,6 +135,7 @@ public class AulaScreen extends Screen {
         regions.clear();
         AulaConfig cfg = AulaConfig.get();
         int accent = cfg.accent;
+        opacity = Math.max(0.2f, Math.min(1f, cfg.uiOpacity));
 
         boolean panelOpen = selected != null && !page.equals("Settings");
         pw = Math.max(340, Math.min(470, width - 40 - SETTINGS_W - 8));
@@ -138,8 +148,8 @@ public class AulaScreen extends Screen {
         ay = py + 32;
         ah = ph - 32 - 24;
 
-        g.fill(0, 0, width, height, 0x66000000);
-        Ui.rrBorder(g, px, py, pw, ph, 7, PANEL, BORDER);
+        g.fill(0, 0, width, height, 0x40000000);
+        Ui.rrBorder(g, px, py, pw, ph, 7, pPanel(), BORDER);
         g.fill(px + 96, py + 8, px + 97, py + ph - 8, LINE);
 
         renderSidebar(g, mx, my, accent);
@@ -162,18 +172,17 @@ public class AulaScreen extends Screen {
     private void navItem(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w,
                          String label, boolean sel, Runnable r) {
         boolean hov = over(mx, my, x, y, w, 18);
-        if (sel) Ui.rrBorder(g, x, y, w, 18, 4, 0xFF1D1D26, 0x66FFFFFF);
-        else if (hov) Ui.rr(g, x, y, w, 18, 4, 0xFF15151C);
+        if (sel) Ui.rrBorder(g, x, y, w, 18, 4, pSel(), 0x66FFFFFF);
+        else if (hov) Ui.rr(g, x, y, w, 18, 4, pHover());
         g.text(font, label, x + 10, y + 5, sel ? TXT : TXT2, false);
         region(x, y, w, 18, r);
     }
 
     private void renderSidebar(GuiGraphicsExtractor g, int mx, int my, int accent) {
         // Logo-Marke + Titel
-        Ui.rr(g, px + 10, py + 10, 16, 16, 4, accent);
-        g.text(font, "A", px + 16, py + 14, 0xFF111116, false);
-        g.text(font, "Aula Client", px + 32, py + 10, TXT, false);
-        g.text(font, "Version 1.3.0", px + 32, py + 20, TXT3, false);
+        Ui.logo(g, px + 8, py + 8, 24, 22);
+        g.text(font, "Aula Client", px + 36, py + 10, TXT, false);
+        g.text(font, "Version 1.5.0", px + 36, py + 20, TXT3, false);
 
         g.text(font, "FEATURES", px + 10, py + 38, TXT3, false);
         for (int i = 0; i < PAGES.length; i++) {
@@ -195,8 +204,8 @@ public class AulaScreen extends Screen {
         AulaConfig cfg = AulaConfig.get();
 
         // Suchleiste
-        Ui.rrBorder(g, cx, py + 8, cw, 18, 5, FIELD, searchFocused ? 0x88FFFFFF : 0x33FFFFFF);
-        Ui.magnifier(g, cx + 7, py + 12, FIELD, TXT2);
+        Ui.rrBorder(g, cx, py + 8, cw, 18, 5, pField(), searchFocused ? 0x88FFFFFF : 0x33FFFFFF);
+        Ui.magnifier(g, cx + 7, py + 12, pField(), TXT2);
         boolean empty = query.isEmpty();
         String shown = fit(empty ? "Search modules..." : query, cw - 34);
         g.text(font, shown, cx + 22, py + 13, empty ? TXT3 : TXT, false);
@@ -223,7 +232,7 @@ public class AulaScreen extends Screen {
 
             boolean hov = over(mx, my, x, y, cardW, 32) && over(mx, my, cx, ay, cw, ah);
             boolean sel = m == selected;
-            int bg = hov ? CARD_HOVER : CARD;
+            int bg = hov ? pCardHover() : pCard();
             if (sel) Ui.rrBorder(g, x, y, cardW, 32, 5, bg, 0xAAFFFFFF);
             else Ui.rr(g, x, y, cardW, 32, 5, bg);
 
@@ -272,7 +281,7 @@ public class AulaScreen extends Screen {
             int y = py + 44 + (i / 2) * 28;
             boolean sel = cfg.theme == i;
             boolean hov = over(mx, my, x, y, cardW, 24);
-            int bg = hov ? CARD_HOVER : CARD;
+            int bg = hov ? pCardHover() : pCard();
             if (sel) Ui.rrBorder(g, x, y, cardW, 24, 5, bg, 0xAAFFFFFF);
             else Ui.rr(g, x, y, cardW, 24, 5, bg);
             Ui.rr(g, x + 8, y + 6, 12, 12, 6, Themes.COLORS[i]);
@@ -286,13 +295,18 @@ public class AulaScreen extends Screen {
         int rowW = cw;
         boolean on = cfg.customTitle;
         boolean hov = over(mx, my, cx, ty, rowW, 24);
-        Ui.rr(g, cx, ty, rowW, 24, 5, hov ? CARD_HOVER : CARD);
+        Ui.rr(g, cx, ty, rowW, 24, 5, hov ? pCardHover() : pCard());
         g.text(font, "Custom title screen", cx + 10, ty + 8, TXT, false);
         Ui.toggle(g, cx + rowW - 34, ty + 6, on, cfg.accent);
         region(cx, ty, rowW, 24, () -> {
             cfg.customTitle = !cfg.customTitle;
             AulaConfig.save();
         });
+
+        // Deckkraft der Menue-Flaechen
+        Setting.Slider op = new Setting.Slider("UI opacity", 0.3, 1.0, 0.05, 2,
+                () -> cfg.uiOpacity, v -> cfg.uiOpacity = (float) v);
+        renderSetting(g, mx, my, op, cx - 12, cw + 24, ty + 34, cfg.accent);
     }
 
     // ---------------------------------------------------------------- settings panel
@@ -300,7 +314,7 @@ public class AulaScreen extends Screen {
     private void renderSettingsPanel(GuiGraphicsExtractor g, int mx, int my,
                                      int sx, int sy, int sw, int sh, int accent) {
         HudModule m = selected;
-        Ui.rrBorder(g, sx, sy, sw, sh, 7, PANEL, BORDER);
+        Ui.rrBorder(g, sx, sy, sw, sh, 7, pPanel(), BORDER);
 
         // Titel (vergroessert) + Schliessen
         g.pose().pushMatrix();
@@ -340,7 +354,7 @@ public class AulaScreen extends Screen {
         if (m.movable()) {
             int bx = sx + 12, by = sy + sh - 30, bw = sw - 24;
             boolean hov = over(mx, my, bx, by, bw, 20);
-            Ui.rrBorder(g, bx, by, bw, 20, 5, hov ? CARD_HOVER : FIELD, 0x33FFFFFF);
+            Ui.rrBorder(g, bx, by, bw, 20, 5, hov ? pCardHover() : pField(), 0x33FFFFFF);
             String label = "Reset position";
             g.text(font, label, bx + (bw - font.width(label)) / 2, by + 6, TXT2, false);
             region(bx, by, bw, 20, m::resetPosition);
@@ -362,7 +376,7 @@ public class AulaScreen extends Screen {
         } else if (s instanceof Setting.Slider sl) {
             int boxW = 32, trackW = 44;
             int trackX = right - boxW - 6 - trackW;
-            Ui.rr(g, right - boxW, y - 1, boxW, 16, 4, FIELD);
+            Ui.rr(g, right - boxW, y - 1, boxW, 16, 4, pField());
             String val = sl.display();
             g.text(font, val, right - 5 - font.width(val), y + 4, TXT2, false);
 
@@ -380,7 +394,7 @@ public class AulaScreen extends Screen {
         } else if (s instanceof Setting.Choice c) {
             int bw = 72, bx = right - bw;
             boolean open = openChoice == c;
-            Ui.rrBorder(g, bx, y - 1, bw, 16, 4, FIELD, open ? 0x88FFFFFF : 0x33FFFFFF);
+            Ui.rrBorder(g, bx, y - 1, bw, 16, 4, pField(), open ? 0x88FFFFFF : 0x33FFFFFF);
             int idx = Math.max(0, Math.min(c.options.length - 1, c.get.getAsInt()));
             g.text(font, fit(c.options[idx], bw - 22), bx + 6, y + 4, TXT, false);
             Ui.chevron(g, bx + bw - 12, y + 4, TXT2);
@@ -402,13 +416,13 @@ public class AulaScreen extends Screen {
         // Klick ausserhalb schliesst (wird vor den Optionen registriert -> Optionen haben Vorrang)
         regionX(0, 0, width, height, m -> openChoice = null);
 
-        Ui.rrBorder(g, choiceX, cy, choiceW, h, 4, 0xFF14141A, 0x55FFFFFF);
+        Ui.rrBorder(g, choiceX, cy, choiceW, h, 4, 0xF014141A, 0x55FFFFFF);
         int current = c.get.getAsInt();
         for (int i = 0; i < c.options.length; i++) {
             final int idx = i;
             int oy = cy + 2 + i * rowH;
             boolean hov = over(mx, my, choiceX + 2, oy, choiceW - 4, rowH);
-            if (hov) Ui.rr(g, choiceX + 2, oy, choiceW - 4, rowH, 3, 0xFF2A2A35);
+            if (hov) Ui.rr(g, choiceX + 2, oy, choiceW - 4, rowH, 3, 0xFF30303D);
             g.text(font, fit(c.options[i], choiceW - 16), choiceX + 7, oy + 3, i == current ? TXT : TXT2, false);
             regionX(choiceX + 2, oy, choiceW - 4, rowH, m -> {
                 c.set.accept(idx);

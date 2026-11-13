@@ -6,6 +6,7 @@
   "description": "Aula Client: eigenes Menue und HUD fuer Minecraft. Keine Combat-, Movement- oder Automations-Module.",
   "authors": ["Milan"],
   "license": "MIT",
+  "icon": "assets/aula-client/icon.png",
   "environment": "client",
   "mixins": ["aula-client.mixins.json"],
   "entrypoints": {

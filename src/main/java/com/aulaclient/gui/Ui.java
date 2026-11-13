@@ -1,6 +1,8 @@
 package com.aulaclient.gui;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 
 /** Kleine Zeichenhelfer: abgerundete Rechtecke, Toggle, Icons. Alles aus fill()-Aufrufen. */
 final class Ui {
@@ -23,10 +25,59 @@ final class Ui {
         }
     }
 
-    /** Rechteck mit 1px Rand. */
+    private static int inset(int i, int r) {
+        double dy = r - i - 0.5;
+        return r - (int) Math.round(Math.sqrt(r * (double) r - dy * dy));
+    }
+
+    /** Nur der 1px-Rand eines abgerundeten Rechtecks (Mitte bleibt unberuehrt -> Fuellung darf durchsichtig sein). */
+    static void rrRing(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int color) {
+        if (w <= 2 || h <= 2) return;
+        r = Math.min(r, Math.min(w, h) / 2);
+        if (r <= 1) {
+            g.fill(x, y, x + w, y + 1, color);
+            g.fill(x, y + h - 1, x + w, y + h, color);
+            g.fill(x, y + 1, x + 1, y + h - 1, color);
+            g.fill(x + w - 1, y + 1, x + w, y + h - 1, color);
+            return;
+        }
+        for (int i = 0; i < r; i++) {
+            int io = inset(i, r);
+            int top = y + i, bot = y + h - 1 - i;
+            if (i == 0) {
+                g.fill(x + io, top, x + w - io, top + 1, color);
+                g.fill(x + io, bot, x + w - io, bot + 1, color);
+            } else {
+                int ii = 1 + inset(i - 1, r - 1);
+                int l = Math.max(ii, io + 1);
+                g.fill(x + io, top, x + l, top + 1, color);
+                g.fill(x + w - l, top, x + w - io, top + 1, color);
+                g.fill(x + io, bot, x + l, bot + 1, color);
+                g.fill(x + w - l, bot, x + w - io, bot + 1, color);
+            }
+        }
+        g.fill(x, y + r, x + 1, y + h - r, color);
+        g.fill(x + w - 1, y + r, x + w, y + h - r, color);
+    }
+
+    /** Rechteck mit Fuellung und 1px Rand; Fuellung und Rand duerfen durchsichtig sein. */
     static void rrBorder(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int fill, int border) {
-        rr(g, x, y, w, h, r, border);
-        rr(g, x + 1, y + 1, w - 2, h - 2, Math.max(r - 1, 0), fill);
+        rr(g, x, y, w, h, r, fill);
+        rrRing(g, x, y, w, h, r, border);
+    }
+
+    /** rgb + Alpha (0..1) -> ARGB. */
+    static int argb(int rgb, float alpha) {
+        return ((int) (Math.max(0f, Math.min(1f, alpha)) * 255) << 24) | (rgb & 0xFFFFFF);
+    }
+
+    // ---- Logo (assets/aula-client/textures/gui/logo.png, 468x427)
+    static final Identifier LOGO = Identifier.fromNamespaceAndPath("aula-client", "textures/gui/logo.png");
+    static final int LOGO_W = 468, LOGO_H = 427;
+
+    /** Zeichnet das Logo skaliert in das Rechteck (x, y, w, h). */
+    static void logo(GuiGraphicsExtractor g, int x, int y, int w, int h) {
+        g.blit(RenderPipelines.GUI_TEXTURED, LOGO, x, y, 0f, 0f, w, h, LOGO_W, LOGO_H, LOGO_W, LOGO_H);
     }
 
     /** Toggle-Schalter 24x12. */
