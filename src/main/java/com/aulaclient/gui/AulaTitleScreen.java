@@ -41,7 +41,7 @@ public class AulaTitleScreen extends Screen {
     private long enteredAt = entered ? openedAt - 10_000 : 0;
 
     // ---- Charakter (laeuft herein, mit der Maus greif- und werfbar)
-    private static final int CW = 90, CH = 150;
+    private int CW = 90, CH = 150;
     private Model.Simple wideModel, slimModel;
     private ResolvableProfile profile;
     private boolean charReady = false;
@@ -69,6 +69,7 @@ public class AulaTitleScreen extends Screen {
         itemY = new int[items.size()];
         itemW = new int[items.size()];
         itemH = new int[items.size()];
+        sizeChar();
         try {
             wideModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER), RenderTypes::entityTranslucent);
             slimModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER_SLIM), RenderTypes::entityTranslucent);
@@ -79,8 +80,12 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
-    private double homeX() { return width * 0.82; }
-    private double homeY() { return height / 2.0 + 10; }
+    private double homeX() { return width * 0.80; }
+    private double homeY() { return height - 14 - CH / 2.0; }
+    private void sizeChar() {
+        CH = Math.max(120, (int) (height * 0.62));
+        CW = (int) (CH * 0.62);
+    }
 
     private void startWalk() {
         walkStart = System.currentTimeMillis() + 250;
@@ -143,6 +148,20 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
+    private void drawShadow(GuiGraphicsExtractor g, float alpha) {
+        if (!charReady) return;
+        double floor = height - 8;
+        double dist = Math.max(0, floor - (py + CH / 2.0));
+        float k = (float) Math.max(0.15, 1.0 - dist / (height * 0.7));
+        int w = (int) (CW * 0.9 * k), h = Math.max(2, (int) (6 * k));
+        int cxs = (int) px, cys = (int) floor - 2;
+        for (int i = 0; i < h; i++) {
+            float f = 1f - i / (float) h;
+            int ww = (int) (w * Math.sqrt(1 - Math.pow(i / (double) h, 2)));
+            g.fill(cxs - ww / 2, cys + i - h / 2, cxs + ww / 2, cys + i - h / 2 + 1, argb(0xFFFFFF, 0.10f * f * k * alpha));
+        }
+    }
+
     private void drawChar(GuiGraphicsExtractor g, int mx, int my, long now, float alpha) {
         if (!charReady || alpha <= 0f) return;
         try {
@@ -179,35 +198,44 @@ public class AulaTitleScreen extends Screen {
     // ---------------------------------------------------------------- background
 
     private void drawCurtains(GuiGraphicsExtractor g, float t, float fade) {
+        int strands = 9;
         for (int side = 0; side < 2; side++) {
-            for (int k = 0; k < 6; k++) {
-                double base = side == 0 ? width * (0.03 + 0.05 * k) : width * (0.97 - 0.05 * k);
-                double amp = width * 0.02 + k * 1.6;
-                float alpha = (0.045f + (5 - k) * 0.012f) * fade;
+            for (int k = 0; k < strands; k++) {
+                double frac = (k + 0.5) / strands;                 // 0 = Rand, 1 = innen
+                double base = side == 0 ? width * (0.01 + 0.25 * frac) : width * (0.99 - 0.25 * frac);
+                float alpha = (0.035f + 0.05f * (float) Math.sin(frac * Math.PI * 0.9 + 0.2)) * fade;
                 int col = argb(0xFFFFFF, alpha);
+                int col2 = argb(0xFFFFFF, alpha * 0.45f);
                 for (int y = 0; y < height; y += 2) {
+                    double yn = y / (double) height;
+                    double bulge = Math.exp(-Math.pow((yn - 0.38) / 0.28, 2)) * width * 0.055 * (0.6 + frac);
                     double x = base
-                            + amp * Math.sin(y * 0.018 + t * 0.45 + k * 0.7 + side * 1.9)
-                            + amp * 0.5 * Math.sin(y * 0.007 - t * 0.3 + k);
-                    // Vorhaenge buchten sich zur Mitte hin aus
-                    x += (side == 0 ? 1 : -1) * Math.sin(y / (double) height * Math.PI) * width * 0.045;
-                    g.fill((int) x, y, (int) x + 2, y + 2, col);
+                            + width * 0.012 * Math.sin(yn * 7.0 + t * 0.35 + k * 0.5 + side * 2.1)
+                            + width * 0.008 * Math.sin(yn * 3.0 - t * 0.22 + k);
+                    x += (side == 0 ? 1 : -1) * bulge;
+                    int xi = (int) x;
+                    g.fill(xi - 1, y, xi + 2, y + 2, col2);
+                    g.fill(xi, y, xi + 1, y + 2, col);
                 }
             }
         }
     }
 
     private void drawParticles(GuiGraphicsExtractor g, float t, float fade) {
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 26; i++) {
             double xr = rnd(i, 1);
-            double x = (i % 2 == 0) ? xr * width * 0.3 : width * (0.7 + xr * 0.3);
-            double speed = 3 + rnd(i, 2) * 7;
+            double x = (i % 2 == 0) ? xr * width * 0.27 : width * (0.73 + xr * 0.27);
+            double speed = 3 + rnd(i, 2) * 6;
             double y = height - ((rnd(i, 3) * height + t * speed) % height);
-            float tw = 0.5f + 0.5f * (float) Math.sin(t * 1.5 + i);
-            int col = argb(0xFFFFFF, (0.12f + 0.25f * tw) * fade);
+            float tw = 0.5f + 0.5f * (float) Math.sin(t * 1.2 + i);
+            int r = 3 + (int) (rnd(i, 4) * 3);
+            int col = argb(0xFFFFFF, (0.10f + 0.22f * tw) * fade);
             int xi = (int) x, yi = (int) y;
-            g.fill(xi - 1, yi, xi + 2, yi + 1, col);
-            g.fill(xi, yi - 1, xi + 1, yi + 2, col);
+            for (int d = -r; d <= r; d++) {
+                int e = r - Math.abs(d);
+                g.fill(xi + d, yi - e, xi + d + 1, yi - e + 1, col);
+                g.fill(xi + d, yi + e, xi + d + 1, yi + e + 1, col);
+            }
         }
     }
 
@@ -224,6 +252,49 @@ public class AulaTitleScreen extends Screen {
         g.pose().scale(1.6f, 1.6f);
         g.centeredText(font, AulaClient.NAME, 0, 0, argb(0xFFFFFF, alpha));
         g.pose().popMatrix();
+    }
+
+    /** Menue-Kopf: kleines Logo links, Name rechts daneben, in einer Zeile. */
+    private void drawHeader(GuiGraphicsExtractor g, int cx, int cy, float alpha) {
+        float ts = 1.7f;
+        int nameW = (int) (font.width(AulaClient.NAME) * ts);
+        int logoW = 28;
+        int logoH = Math.round(logoW * (float) Ui.LOGO_H / Ui.LOGO_W);
+        int gap = 10;
+        int total = logoW + gap + nameW;
+        int x0 = cx - total / 2;
+        Ui.logo(g, x0, cy - logoH / 2, logoW, logoH);
+        if (alpha < 1f) g.fill(x0, cy - logoH / 2, x0 + logoW, cy + logoH / 2, argb(0x040406, 1f - alpha));
+        g.pose().pushMatrix();
+        g.pose().translate(x0 + logoW + gap, cy - 4 * ts);
+        g.pose().scale(ts, ts);
+        g.text(font, AulaClient.NAME, 0, 0, argb(0xFFFFFF, alpha), false);
+        g.pose().popMatrix();
+    }
+
+    /** Konto-Auswahl oben rechts (Name + Pfeil, Klick klappt Liste auf). */
+    private boolean accountOpen = false;
+
+    private void drawAccount(GuiGraphicsExtractor g, int mx, int my, float alpha) {
+        String name = minecraft.getGameProfile().name();
+        int w = font.width(name) + 12;
+        int x = (int) (width * 0.80) - w / 2, y = 14;
+        g.text(font, name, x, y, argb(0xE8E8EE, alpha), false);
+        int ax = x + font.width(name) + 5;
+        for (int i = 0; i < 4; i++) {
+            int yy = accountOpen ? y + 6 - i : y + 3 + i;
+            g.fill(ax + i, yy, ax + 7 - i, yy + 1, argb(0xB0B0BC, alpha));
+        }
+        g.fill(x, y + 11, x + w - 4, y + 12, argb(0xFFFFFF, 0.25f * alpha));
+        if (accountOpen) {
+            int bx = (int) (width * 0.80) - 78, by = y + 20, bw = 156, bh = 54;
+            Ui.rr(g, bx, by, bw, bh, 4, argb(0x101014, 0.92f));
+            Ui.rrRing(g, bx, by, bw, bh, 4, argb(0xFFFFFF, 0.10f));
+            g.text(font, name, bx + 10, by + 9, argb(0xE8E8EE, 1f), false);
+            g.text(font, "Current", bx + bw - 10 - font.width("Current"), by + 9, argb(0x8A8A96, 1f), false);
+            g.fill(bx + 8, by + 24, bx + bw - 8, by + 25, argb(0xFFFFFF, 0.10f));
+            g.centeredText(font, "+ Add another account", bx + bw / 2, by + 36, argb(0xB0B0BC, 1f));
+        }
     }
 
     // ---------------------------------------------------------------- render
@@ -249,13 +320,19 @@ public class AulaTitleScreen extends Screen {
             g.fill(cx - w / 2, height / 2 + 51, cx + w / 2, height / 2 + 52, argb(0xFFFFFF, 0.5f * fade));
         } else {
             float m = clamp01((now - enteredAt) / 500f);
-            drawLogo(g, cx, height / 2 - 118, 56, m);
-            drawMenu(g, mx, my, cx, height / 2 - 28, m);
+            drawHeader(g, cx, (int) (height * 0.315), m);
+            drawMenu(g, mx, my, cx, (int) (height * 0.405), m);
             if (!charStarted) { charStarted = true; startWalk(); }
+            drawShadow(g, m);
             drawChar(g, mx, my, now, m);
+            drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Aula Client 1.6.0  ·  Minecraft 26.3", 8, height - 14, argb(0x8A8A96, 0.6f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.7.0)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        String brand = "AULA CLIENT";
+        int bw = font.width(brand);
+        Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
+        g.text(font, brand, width - bw - 6, height - 12, argb(0xE8E8EE, 0.8f * fade), false);
     }
 
     private void drawMenu(GuiGraphicsExtractor g, int mx, int my, int cx, int startY, float alpha) {
@@ -267,7 +344,7 @@ public class AulaTitleScreen extends Screen {
                 y += 8;
                 lastTier = it.tier;
             }
-            float scale = it.tier == 1 ? 1.25f : it.tier == 2 ? 1.0f : 0.9f;
+            float scale = it.tier == 1 ? 1.3f : it.tier == 2 ? 1.05f : 0.95f;
             int w = (int) (font.width(it.label) * scale);
             int h = (int) (9 * scale);
             int top = y;
@@ -287,7 +364,7 @@ public class AulaTitleScreen extends Screen {
             itemY[i] = top - 3;
             itemW[i] = w + 20;
             itemH[i] = h + 6;
-            y += it.tier == 1 ? 22 : it.tier == 2 ? 20 : 18;
+            y += it.tier == 1 ? Math.max(22, height / 17) : it.tier == 2 ? Math.max(20, height / 19) : Math.max(18, height / 21);
         }
     }
 
@@ -306,6 +383,8 @@ public class AulaTitleScreen extends Screen {
                 return true;
             }
             int mx = (int) event.x(), my = (int) event.y();
+            if (my >= 10 && my <= 26 && Math.abs(mx - width * 0.80) < 50) { accountOpen = !accountOpen; return true; }
+            if (accountOpen) accountOpen = false;
             if (charReady && !walking && overChar(mx, my)) {
                 grabbed = true; flying = false;
                 grabDX = mx - px; grabDY = my - py;
