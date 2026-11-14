@@ -26,16 +26,14 @@ jobs:
         run: |
           set +e
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== OrderedSubmitNodeCollector"
-          javap -public -cp "$MC" net.minecraft.client.renderer.OrderedSubmitNodeCollector 2>&1
-          echo "=== ElytraLayer submit (vanilla reference, for render pattern)"
-          javap -public -cp "$MC" net.minecraft.client.renderer.entity.layers.ElytraLayer 2>&1
-          echo "=== Model (submitSinglePartModel?)"
-          javap -public -cp "$MC" net.minecraft.client.model.Model 2>&1
-          echo "=== PlayerModel ctor + fields"
-          javap -public -cp "$MC" net.minecraft.client.model.player.PlayerModel 2>&1 | head -30
-          echo "=== PlayerRenderState fields"
-          javap -public -cp "$MC" net.minecraft.client.renderer.state.level.PlayerRenderState 2>&1
+          echo "=== UvMapping"
+          javap -public -cp "$MC" net.minecraft.client.renderer.texture.UvMapping 2>&1
+          echo "=== RenderTypes entity methods"
+          javap -public -cp "$MC" net.minecraft.client.renderer.rendertype.RenderTypes 2>&1 | grep -iE "entityCutout|entityTranslucent|public static"
+          echo "=== AvatarRenderState"
+          javap -public -cp "$MC" net.minecraft.client.renderer.entity.state.AvatarRenderState 2>&1
+          echo "=== HumanoidRenderState"
+          javap -public -cp "$MC" net.minecraft.client.renderer.entity.state.HumanoidRenderState 2>&1 | head -20
           set -e
 
       - if: steps.build.outcome == 'failure'
