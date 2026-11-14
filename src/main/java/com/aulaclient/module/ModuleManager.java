@@ -20,7 +20,6 @@ import java.util.function.Function;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.InteractionResult;
-import org.joml.Vector3f;
 
 public class ModuleManager {
     public final List<HudModule> modules = new ArrayList<>();
@@ -744,7 +743,7 @@ public class ModuleManager {
 
     private static void spawnHitRing(net.minecraft.world.level.Level world, double x, double y, double z) {
         var rnd = java.util.concurrent.ThreadLocalRandom.current();
-        Vector3f col = new Vector3f(1f, 0.25f, 0.2f);
+        int col = 0xFF4033;
         for (int i = 0; i < 16; i++) {
             double a = i * (Math.PI * 2 / 16);
             double r = 0.5;
@@ -754,7 +753,7 @@ public class ModuleManager {
     }
 
     /** Einfacher, geometrischer Hut, nur lokal sichtbar; sitzt auf dem Kopf und dreht sich mit. */
-    static class Hats extends HudModule {
+    public static class Hats extends HudModule {
         Hats() {
             super("Hats", "Wear a simple geometric hat only you can see", 0, 0);
         }
@@ -783,7 +782,7 @@ public class ModuleManager {
     }
 
     /** Kleine Flammenpartikel an den Haenden, waehrend du dich bewegst oder zuschlaegst. */
-    static class FlameHands extends HudModule {
+    public static class FlameHands extends HudModule {
         FlameHands() {
             super("Flame Hands", "Small flame particles around your hands (only you see them)", 0, 0);
         }
@@ -820,7 +819,7 @@ public class ModuleManager {
     }
 
     /** Partikel-Ring am Ziel, wenn du eine Entity triffst. */
-    static class HitFx extends HudModule {
+    public static class HitFx extends HudModule {
         HitFx() {
             super("HitFX", "Show a particle ring on the target when you hit it", 0, 0);
         }
@@ -842,7 +841,7 @@ public class ModuleManager {
     }
 
     /** Eigener Treffer-Sound beim Zuschlagen. */
-    static class HitSounds extends HudModule {
+    public static class HitSounds extends HudModule {
         HitSounds() {
             super("Hit Sounds", "Play a custom sound when you hit something", 0, 0);
         }
@@ -864,7 +863,7 @@ public class ModuleManager {
     }
 
     /** Partikel an den Fuessen, wenn du abspringst. */
-    static class JumpFx extends HudModule {
+    public static class JumpFx extends HudModule {
         private boolean wasOnGround = true;
 
         JumpFx() {
@@ -903,7 +902,7 @@ public class ModuleManager {
     }
 
     /** Langsam rotierender Partikel-Kreis um die Fuesse, solange du still stehst. */
-    static class LineGlyphs extends HudModule {
+    public static class LineGlyphs extends HudModule {
         private int ticks;
 
         LineGlyphs() {
@@ -930,7 +929,7 @@ public class ModuleManager {
             if (v.x * v.x + v.z * v.z > 0.0009) return;
             ticks++;
             int accent = AulaConfig.get().accent;
-            Vector3f col = new Vector3f(((accent >> 16) & 0xFF) / 255f, ((accent >> 8) & 0xFF) / 255f, (accent & 0xFF) / 255f);
+            int col = accent & 0xFFFFFF;
             int n = 8;
             for (int i = 0; i < n; i++) {
                 double a = ticks * 0.03 + i * (Math.PI * 2 / n);
