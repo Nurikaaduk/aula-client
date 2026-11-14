@@ -176,36 +176,6 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
-    /** Flamme aus vielen aufsteigenden, weich ueberlagerten Partikeln (Farbe: heiss -> kuehl, Groesse schrumpft). */
-    private void drawFlame(GuiGraphicsExtractor g, long now, float alpha) {
-        if (!charReady || alpha <= 0f) return;
-        double tt = now / 1000.0;
-        int cxf = (int) px;
-        int base = (int) (py - CH / 2.0) - CH / 40;
-        int fh = (int) (CH * 0.5);
-        int ww = (int) (CW * 0.22);
-        final int N = 72;
-        for (int i = 0; i < N; i++) {
-            double ph = (tt * (0.55 + rnd(i, 5) * 0.5) + rnd(i, 6)) % 1.0;      // Lebensalter 0..1
-            double wob = Math.sin(tt * 4.0 + i * 1.7) * ww * 0.55 * ph + (rnd(i, 7) - 0.5) * ww * 0.5 * (1 - ph);
-            int x = cxf + (int) wob;
-            int y = base - (int) (Math.pow(ph, 0.85) * fh);
-            float life = (float) (1.0 - ph);
-            int sz = Math.max(2, (int) ((CW * 0.12) * (0.25 + life * 0.75) * (0.7 + rnd(i, 8) * 0.5)));
-            int rgb = ph < 0.25 ? 0xF2FF9A : ph < 0.55 ? 0xA6EA2C : ph < 0.8 ? 0x3FB01C : 0x1E6A12;
-            float a = life * life * alpha;
-            g.fill(x - sz, y - sz, x + sz, y + sz, argb(rgb, 0.10f * a));
-            int m = Math.max(1, sz * 2 / 3);
-            g.fill(x - m, y - m, x + m, y + m, argb(rgb, 0.20f * a));
-            int c = Math.max(1, sz / 3);
-            g.fill(x - c, y - c, x + c, y + c, argb(ph < 0.4 ? 0xFFFFD0 : rgb, 0.40f * a));
-        }
-        // heller Kern am Flammenfuss
-        int kc = Math.max(3, CW / 7);
-        g.fill(cxf - kc, base - kc * 2, cxf + kc, base, argb(0xEFFFB0, 0.28f * alpha));
-        g.fill(cxf - kc / 2, base - kc * 2 + 2, cxf + kc / 2, base - 2, argb(0xFFFFFF, 0.35f * alpha));
-    }
-
     private void drawShadow(GuiGraphicsExtractor g, float alpha) {
         if (!charReady) return;
         double floor = height - 8;
@@ -394,11 +364,10 @@ public class AulaTitleScreen extends Screen {
             if (!charStarted) { charStarted = true; startWalk(); }
             drawShadow(g, m);
             drawChar(g, mx, my, now, m);
-            drawFlame(g, now, m);
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.9.4)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.9.5)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
