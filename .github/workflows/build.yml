@@ -21,16 +21,6 @@ jobs:
         run: gradle build --stacktrace
         continue-on-error: true
 
-      - name: Dump Minecraft API (debug)
-        if: always()
-        run: |
-          set +e
-          MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          RV1=$(find ~/.gradle -iname 'fabric-rendering-v1*.jar' 2>/dev/null | grep -v sources | head -1)
-          echo "=== full interface dump"
-          javap -public -classpath "$MC:$RV1" net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback
-          set -e
-
       - if: steps.build.outcome == 'failure'
         run: exit 1
 
