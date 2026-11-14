@@ -48,7 +48,7 @@ public final class CosmeticLayers {
             public void registerLayers(net.minecraft.world.entity.EntityType<? extends LivingEntity> entityType,
                                         LivingEntityRenderer<?, ?, ?> entityRenderer,
                                         LivingEntityRenderLayerRegistrationCallback.RegistrationHelper registrationHelper,
-                                        LivingEntityRenderLayerRegistrationCallback.Context context) {
+                                        net.minecraft.client.renderer.entity.EntityRendererProvider.Context context) {
                 if (entityType != EntityTypes.PLAYER) return;
                 try {
                     RenderLayerParent<AvatarRenderState, PlayerModel> parent =
