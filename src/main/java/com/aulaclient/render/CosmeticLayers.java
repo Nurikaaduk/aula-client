@@ -141,11 +141,11 @@ public final class CosmeticLayers {
             AulaConfig c = AulaConfig.get();
             float a = Math.max(0.05f, Math.min(0.9f, c.glassOpacity));
             int alpha = (int) (a * 255);
-            int tint = (alpha << 24) | 0xD8ECFF;
+            int tint = (alpha << 24) | 0xC6E8FF;
             collector.submitModel(getParentModel(), state, poseStack, RenderTypes.entityTranslucent(BLANK), light, OverlayTexture.NO_OVERLAY, tint);
             if (c.glassOutline) {
                 try {
-                    collector.submitModel(getParentModel(), state, poseStack, RenderTypes.outline(BLANK), light, OverlayTexture.NO_OVERLAY, 0xFFEFFFFF);
+                    collector.submitModel(getParentModel(), state, poseStack, RenderTypes.outline(BLANK), light, OverlayTexture.NO_OVERLAY, 0xFFBEE6FF);
                 } catch (Throwable ignored) {
                     // Outline-RenderType evtl. nicht verfuegbar; Glas-Look bleibt trotzdem sichtbar.
                 }

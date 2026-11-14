@@ -51,7 +51,7 @@ public class AulaConfig {
     public boolean capeEnabled = false;
     public boolean wingsEnabled = false;
     public boolean glassBodyEnabled = false;
-    public float glassOpacity = 0.3f;
+    public float glassOpacity = 0.16f;
     public boolean glassOutline = true;
 
     public int wingColor1 = 0xFFFF3296;
