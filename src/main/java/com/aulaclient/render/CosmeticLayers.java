@@ -43,19 +43,21 @@ public final class CosmeticLayers {
 
     @SuppressWarnings("unchecked")
     public static void register() {
-        LivingEntityRenderLayerRegistrationCallback.EVENT.register((
-                net.minecraft.world.entity.EntityType<? extends LivingEntity> entityType,
-                LivingEntityRenderer<?, ?, ?> entityRenderer,
-                LivingEntityRenderLayerRegistrationCallback.RegistrationHelper registrationHelper) -> {
-            if (entityType != EntityTypes.PLAYER) return;
-            try {
-                RenderLayerParent<AvatarRenderState, PlayerModel> parent =
-                        (RenderLayerParent<AvatarRenderState, PlayerModel>) entityRenderer;
-                registrationHelper.register(new CapeLayer(parent));
-                registrationHelper.register(new WingsLayer(parent));
-                registrationHelper.register(new GlassBodyLayer(parent));
-            } catch (Throwable ignored) {
-                // Falls sich die Render-API aendert, einfach ohne diese Cosmetics weitermachen.
+        LivingEntityRenderLayerRegistrationCallback.EVENT.register(new LivingEntityRenderLayerRegistrationCallback() {
+            @Override
+            public void registerLayers(net.minecraft.world.entity.EntityType<? extends LivingEntity> entityType,
+                                        LivingEntityRenderer<?, ?, ?> entityRenderer,
+                                        LivingEntityRenderLayerRegistrationCallback.RegistrationHelper registrationHelper) {
+                if (entityType != EntityTypes.PLAYER) return;
+                try {
+                    RenderLayerParent<AvatarRenderState, PlayerModel> parent =
+                            (RenderLayerParent<AvatarRenderState, PlayerModel>) entityRenderer;
+                    registrationHelper.register(new CapeLayer(parent));
+                    registrationHelper.register(new WingsLayer(parent));
+                    registrationHelper.register(new GlassBodyLayer(parent));
+                } catch (Throwable ignored) {
+                    // Falls sich die Render-API aendert, einfach ohne diese Cosmetics weitermachen.
+                }
             }
         });
     }
