@@ -26,14 +26,8 @@ jobs:
         run: |
           set +e
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== EntityType.PLAYER search"
-          javap -public -cp "$MC" net.minecraft.world.entity.EntityType 2>&1 | grep -i "PLAYER"
-          unzip -l "$MC" 2>/dev/null | grep -E "/EntityTypes?\.class$"
-          javap -public -cp "$MC" net.minecraft.world.entity.EntityTypes 2>&1 | grep -i PLAYER
-          echo "=== Minecraft render target"
-          javap -public -cp "$MC" net.minecraft.client.Minecraft 2>&1 | grep -iE "rendertarget"
-          echo "=== Gui chat"
-          javap -public -cp "$MC" net.minecraft.client.gui.Gui 2>&1 | grep -iE "chat"
+          echo "=== Minecraft methods returning RenderTarget"
+          javap -public -cp "$MC" net.minecraft.client.Minecraft 2>&1 | grep -i "RenderTarget"
           set -e
 
       - if: steps.build.outcome == 'failure'
