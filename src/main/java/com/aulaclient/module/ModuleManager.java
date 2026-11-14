@@ -17,6 +17,10 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.function.Function;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.world.InteractionResult;
+import org.joml.Vector3f;
 
 public class ModuleManager {
     public final List<HudModule> modules = new ArrayList<>();
@@ -28,6 +32,12 @@ public class ModuleManager {
     public final Cape cape;
     public final Wings wings;
     public final GlassBody glassBody;
+    public final Hats hats;
+    public final FlameHands flameHands;
+    public final HitFx hitFx;
+    public final HitSounds hitSounds;
+    public final JumpFx jumpFx;
+    public final LineGlyphs lineGlyphs;
 
     public ModuleManager(KeyMapping zoomKey, KeyMapping freeLookKey) {
         modules.add(new SimpleText("FPS", "Show your current frames per second", 4, 4,
@@ -60,11 +70,36 @@ public class ModuleManager {
         modules.add(cape);
         modules.add(wings);
         modules.add(glassBody);
+        hats = new Hats();
+        flameHands = new FlameHands();
+        hitFx = new HitFx();
+        hitSounds = new HitSounds();
+        jumpFx = new JumpFx();
+        lineGlyphs = new LineGlyphs();
+        modules.add(hats);
+        modules.add(flameHands);
+        modules.add(hitFx);
+        modules.add(hitSounds);
+        modules.add(jumpFx);
+        modules.add(lineGlyphs);
+
+        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (hitFx.enabled) spawnHitRing(world, entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ());
+            if (hitSounds.enabled) {
+                try {
+                    player.level().playLocalSound(player.getX(), player.getY(), player.getZ(),
+                            net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_STRONG, net.minecraft.sounds.SoundSource.PLAYERS,
+                            0.6f, 1.4f, false);
+                } catch (Throwable ignored) { }
+            }
+            return InteractionResult.PASS;
+        });
 
         for (HudModule m : modules) {
             if (m instanceof Zoom || m instanceof Stretch || m instanceof FreeLook) m.category = "Visuals";
             else if (m instanceof Crosshair || m instanceof CharacterFx
-                    || m instanceof Cape || m instanceof Wings || m instanceof GlassBody) m.category = "Cosmetics";
+                    || m instanceof Cape || m instanceof Wings || m instanceof GlassBody
+                    || m instanceof Hats || m instanceof FlameHands || m instanceof LineGlyphs) m.category = "Cosmetics";
             else m.category = "HUD";
         }
     }
@@ -74,7 +109,9 @@ public class ModuleManager {
         AulaConfig cfg = AulaConfig.get();
         for (HudModule m : modules) {
             boolean defaultOn = !(m instanceof Crosshair || m instanceof Stretch || m instanceof CharacterFx
-                    || m instanceof FreeLook || m instanceof Cape || m instanceof Wings || m instanceof GlassBody);
+                    || m instanceof FreeLook || m instanceof Cape || m instanceof Wings || m instanceof GlassBody
+                    || m instanceof Hats || m instanceof FlameHands || m instanceof HitFx || m instanceof HitSounds
+                    || m instanceof JumpFx || m instanceof LineGlyphs);
             m.enabled = cfg.enabled.getOrDefault(m.name, defaultOn);
             int[] p = cfg.positions.get(m.name);
             if (p != null && p.length == 2) {
@@ -637,8 +674,27 @@ public class ModuleManager {
 
     /** Eigene Fluegel-Cosmetic, nur lokal sichtbar. */
     public static class Wings extends HudModule {
+        private static final int[][] PRESETS = {
+                {0xFFFF3296, 0xFF3296FF}, {0xFFFFFFFF, 0xFFB0D8FF}, {0xFFFF5050, 0xFFFFC850}, {0xFF50FF8C, 0xFF3296FF}
+        };
+        private static final String[] PRESET_NAMES = {"Pink/Blue", "Luminous", "Fire", "Nature"};
+
         Wings() {
             super("Wings", "Wear wings only you can see", 0, 0);
+        }
+
+        @Override
+        public List<Setting> settings() {
+            AulaConfig c = AulaConfig.get();
+            int cur = 0;
+            for (int i = 0; i < PRESETS.length; i++) if (PRESETS[i][0] == c.wingColor1 && PRESETS[i][1] == c.wingColor2) cur = i;
+            int curFinal = cur;
+            return List.of(
+                    new Setting.Choice("Colors", PRESET_NAMES, () -> curFinal, v -> {
+                        c.wingColor1 = PRESETS[v][0];
+                        c.wingColor2 = PRESETS[v][1];
+                    }),
+                    new Setting.Slider("Size", 0.5, 2.0, 0.1, 1, () -> (double) c.wingSize, v -> c.wingSize = (float) v));
         }
 
         @Override
@@ -680,6 +736,207 @@ public class ModuleManager {
             super.setEnabled(on);
             AulaConfig.get().glassBodyEnabled = on;
             AulaConfig.save();
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    private static void spawnHitRing(net.minecraft.world.level.Level world, double x, double y, double z) {
+        var rnd = java.util.concurrent.ThreadLocalRandom.current();
+        Vector3f col = new Vector3f(1f, 0.25f, 0.2f);
+        for (int i = 0; i < 16; i++) {
+            double a = i * (Math.PI * 2 / 16);
+            double r = 0.5;
+            world.addParticle(new DustParticleOptions(col, 1.3f), x + Math.cos(a) * r, y, z + Math.sin(a) * r,
+                    Math.cos(a) * 0.02, 0.02, Math.sin(a) * 0.02);
+        }
+    }
+
+    /** Einfacher, geometrischer Hut, nur lokal sichtbar; sitzt auf dem Kopf und dreht sich mit. */
+    static class Hats extends HudModule {
+        Hats() {
+            super("Hats", "Wear a simple geometric hat only you can see", 0, 0);
+        }
+
+        @Override
+        public List<Setting> settings() {
+            AulaConfig c = AulaConfig.get();
+            return List.of(new Setting.Choice("Style", new String[]{"Cone", "Cube", "Halo Ring"},
+                    () -> c.hatStyle, v -> c.hatStyle = v));
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().hatsEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Kleine Flammenpartikel an den Haenden, waehrend du dich bewegst oder zuschlaegst. */
+    static class FlameHands extends HudModule {
+        FlameHands() {
+            super("Flame Hands", "Small flame particles around your hands (only you see them)", 0, 0);
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().flameHandsEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void tick(Minecraft mc) {
+            if (!enabled || mc.player == null || mc.level == null) return;
+            var p = mc.player;
+            float yaw = (float) Math.toRadians(p.getYRot());
+            double fx = -Math.sin(yaw), fz = Math.cos(yaw);
+            double sx = Math.cos(yaw), sz = Math.sin(yaw);
+            double baseY = p.getY() + p.getBbHeight() * 0.55;
+            for (int side = -1; side <= 1; side += 2) {
+                double hx = p.getX() + fx * 0.3 + sx * 0.4 * side;
+                double hz = p.getZ() + fz * 0.3 + sz * 0.4 * side;
+                mc.level.addParticle(ParticleTypes.FLAME, hx, baseY, hz, 0, 0.01, 0);
+            }
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Partikel-Ring am Ziel, wenn du eine Entity triffst. */
+    static class HitFx extends HudModule {
+        HitFx() {
+            super("HitFX", "Show a particle ring on the target when you hit it", 0, 0);
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().hitFxEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Eigener Treffer-Sound beim Zuschlagen. */
+    static class HitSounds extends HudModule {
+        HitSounds() {
+            super("Hit Sounds", "Play a custom sound when you hit something", 0, 0);
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().hitSoundsEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Partikel an den Fuessen, wenn du abspringst. */
+    static class JumpFx extends HudModule {
+        private boolean wasOnGround = true;
+
+        JumpFx() {
+            super("JumpFX", "Show particles at your feet when you jump", 0, 0);
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().jumpFxEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void tick(Minecraft mc) {
+            if (!enabled || mc.player == null || mc.level == null) return;
+            boolean onGround = mc.player.onGround();
+            if (wasOnGround && !onGround && mc.player.getDeltaMovement().y > 0.05) {
+                var p = mc.player;
+                for (int i = 0; i < 10; i++) {
+                    double a = i * (Math.PI * 2 / 10);
+                    mc.level.addParticle(ParticleTypes.CLOUD, p.getX() + Math.cos(a) * 0.3, p.getY() + 0.05,
+                            p.getZ() + Math.sin(a) * 0.3, Math.cos(a) * 0.03, 0, Math.sin(a) * 0.03);
+                }
+            }
+            wasOnGround = onGround;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Langsam rotierender Partikel-Kreis um die Fuesse, solange du still stehst. */
+    static class LineGlyphs extends HudModule {
+        private int ticks;
+
+        LineGlyphs() {
+            super("Line Glyphs", "A slowly turning ring of glyphs around your feet while standing still", 0, 0);
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().lineGlyphsEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void tick(Minecraft mc) {
+            if (!enabled || mc.player == null || mc.level == null) return;
+            var p = mc.player;
+            var v = p.getDeltaMovement();
+            if (v.x * v.x + v.z * v.z > 0.0009) return;
+            ticks++;
+            int accent = AulaConfig.get().accent;
+            Vector3f col = new Vector3f(((accent >> 16) & 0xFF) / 255f, ((accent >> 8) & 0xFF) / 255f, (accent & 0xFF) / 255f);
+            int n = 8;
+            for (int i = 0; i < n; i++) {
+                double a = ticks * 0.03 + i * (Math.PI * 2 / n);
+                mc.level.addParticle(new DustParticleOptions(col, 0.9f),
+                        p.getX() + Math.cos(a) * 0.9, p.getY() + 0.05, p.getZ() + Math.sin(a) * 0.9, 0, 0, 0);
+            }
         }
 
         @Override

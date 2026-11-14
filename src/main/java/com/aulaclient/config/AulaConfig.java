@@ -51,7 +51,22 @@ public class AulaConfig {
     public boolean capeEnabled = false;
     public boolean wingsEnabled = false;
     public boolean glassBodyEnabled = false;
-    public float glassOpacity = 0.45f;
+    public float glassOpacity = 0.3f;
+    public boolean glassOutline = true;
+
+    public int wingColor1 = 0xFFFF3296;
+    public int wingColor2 = 0xFF3296FF;
+    public float wingSize = 1.0f;
+
+    public boolean hatsEnabled = false;
+    public int hatColor = 0xFFE0E0E8;
+    public int hatStyle = 0; // 0 Cone, 1 Cube, 2 Halo-Ring
+
+    public boolean flameHandsEnabled = false;
+    public boolean hitFxEnabled = false;
+    public boolean hitSoundsEnabled = false;
+    public boolean jumpFxEnabled = false;
+    public boolean lineGlyphsEnabled = false;
 
     private static AulaConfig instance = new AulaConfig();
 

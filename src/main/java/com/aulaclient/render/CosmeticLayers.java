@@ -56,6 +56,7 @@ public final class CosmeticLayers {
                     registrationHelper.register(new CapeLayer(parent));
                     registrationHelper.register(new WingsLayer(parent));
                     registrationHelper.register(new GlassBodyLayer(parent));
+                    registrationHelper.register(new HatsLayer(parent));
                 } catch (Throwable ignored) {
                     // Falls sich die Render-API aendert, einfach ohne diese Cosmetics weitermachen.
                 }
@@ -114,14 +115,16 @@ public final class CosmeticLayers {
         @Override
         public void submit(PoseStack poseStack, SubmitNodeCollector collector, int light, AvatarRenderState state, float yRot, float xRot) {
             if (!AulaClient.modules.wings.enabled || !isLocalPlayer(state)) return;
+            AulaConfig c = AulaConfig.get();
             poseStack.pushPose();
+            float sc = Math.max(0.4f, Math.min(2.5f, c.wingSize));
+            poseStack.scale(sc, sc, sc);
             float flap = (float) Math.sin(System.currentTimeMillis() / 260.0) * 0.25f;
             left.yRot = 0.5f + flap;
             right.yRot = -0.5f - flap;
-            int col = AulaConfig.get().accent;
             RenderType rt = RenderTypes.entityTranslucentCull(BLANK);
-            collector.submitModelPart(left, poseStack, rt, light, OverlayTexture.NO_OVERLAY, IDENTITY_UV, col);
-            collector.submitModelPart(right, poseStack, rt, light, OverlayTexture.NO_OVERLAY, IDENTITY_UV, col);
+            collector.submitModelPart(left, poseStack, rt, light, OverlayTexture.NO_OVERLAY, IDENTITY_UV, c.wingColor1);
+            collector.submitModelPart(right, poseStack, rt, light, OverlayTexture.NO_OVERLAY, IDENTITY_UV, c.wingColor2);
             poseStack.popPose();
         }
     }
@@ -135,10 +138,55 @@ public final class CosmeticLayers {
         @Override
         public void submit(PoseStack poseStack, SubmitNodeCollector collector, int light, AvatarRenderState state, float yRot, float xRot) {
             if (!AulaClient.modules.glassBody.enabled || !isLocalPlayer(state)) return;
-            float a = Math.max(0.05f, Math.min(0.9f, AulaConfig.get().glassOpacity));
+            AulaConfig c = AulaConfig.get();
+            float a = Math.max(0.05f, Math.min(0.9f, c.glassOpacity));
             int alpha = (int) (a * 255);
             int tint = (alpha << 24) | 0xD8ECFF;
             collector.submitModel(getParentModel(), state, poseStack, RenderTypes.entityTranslucent(BLANK), light, OverlayTexture.NO_OVERLAY, tint);
+            if (c.glassOutline) {
+                try {
+                    collector.submitModel(getParentModel(), state, poseStack, RenderTypes.outline(BLANK), light, OverlayTexture.NO_OVERLAY, 0xFFEFFFFF);
+                } catch (Throwable ignored) {
+                    // Outline-RenderType evtl. nicht verfuegbar; Glas-Look bleibt trotzdem sichtbar.
+                }
+            }
+        }
+    }
+
+    /** Einfacher, geometrischer Hut (Kegel/Wuerfel/Ring), sitzt auf dem Kopf und dreht sich mit ihm. */
+    static class HatsLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
+        private final ModelPart cone, cube, ring;
+
+        HatsLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
+            super(parent);
+            MeshDefinition mesh = new MeshDefinition();
+            PartDefinition pd = mesh.getRoot();
+            pd.addOrReplaceChild("cone", CubeListBuilder.create().texOffs(0, 0).addBox(-3f, -6f, -3f, 6f, 6f, 6f, new net.minecraft.client.model.geom.builders.CubeDeformation(-2.4f)),
+                    PartPose.offset(0f, -8f, 0f));
+            pd.addOrReplaceChild("cube", CubeListBuilder.create().texOffs(0, 0).addBox(-4f, -5f, -4f, 8f, 5f, 8f),
+                    PartPose.offset(0f, -9f, 0f));
+            pd.addOrReplaceChild("ring", CubeListBuilder.create().texOffs(0, 0).addBox(-5f, -1f, -5f, 10f, 1f, 10f),
+                    PartPose.offset(0f, -9f, 0f));
+            var baked = LayerDefinition.create(mesh, 16, 16).bakeRoot();
+            cone = baked.getChild("cone");
+            cube = baked.getChild("cube");
+            ring = baked.getChild("ring");
+        }
+
+        @Override
+        public void submit(PoseStack poseStack, SubmitNodeCollector collector, int light, AvatarRenderState state, float yRot, float xRot) {
+            if (!AulaClient.modules.hats.enabled || !isLocalPlayer(state)) return;
+            AulaConfig c = AulaConfig.get();
+            poseStack.pushPose();
+            ModelPart head = getParentModel().getHead();
+            head.translateAndRotate(poseStack);
+            ModelPart part = c.hatStyle == 1 ? cube : c.hatStyle == 2 ? ring : cone;
+            if (c.hatStyle == 2) {
+                float spin = (float) (System.currentTimeMillis() / 500.0 % (Math.PI * 2));
+                ring.yRot = spin;
+            }
+            collector.submitModelPart(part, poseStack, RenderTypes.entityCutout(BLANK), light, OverlayTexture.NO_OVERLAY, IDENTITY_UV, c.hatColor);
+            poseStack.popPose();
         }
     }
 }
