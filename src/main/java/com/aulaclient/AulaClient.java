@@ -6,7 +6,7 @@ import com.aulaclient.gui.AulaTitleScreen;
 import com.aulaclient.module.ModuleManager;
 import com.aulaclient.render.CosmeticLayers;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Screenshot;
+import net.minecraft.client.Screenshot;
 import net.minecraft.network.chat.Component;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;

@@ -16,7 +16,7 @@ final class Ui {
         if (!com.aulaclient.config.AulaConfig.get().menuSounds) return;
         try {
             Minecraft mc = Minecraft.getInstance();
-            mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, pitch, 0.5f));
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, pitch));
         } catch (Throwable ignored) { }
     }
 

@@ -21,21 +21,6 @@ jobs:
         run: gradle build --stacktrace
         continue-on-error: true
 
-      - name: Dump Minecraft API (debug)
-        if: always()
-        run: |
-          set +e
-          MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== UvMapping"
-          javap -public -cp "$MC" net.minecraft.client.renderer.texture.UvMapping 2>&1
-          echo "=== RenderTypes entity methods"
-          javap -public -cp "$MC" net.minecraft.client.renderer.rendertype.RenderTypes 2>&1 | grep -iE "entityCutout|entityTranslucent|public static"
-          echo "=== AvatarRenderState"
-          javap -public -cp "$MC" net.minecraft.client.renderer.entity.state.AvatarRenderState 2>&1
-          echo "=== HumanoidRenderState"
-          javap -public -cp "$MC" net.minecraft.client.renderer.entity.state.HumanoidRenderState 2>&1 | head -20
-          set -e
-
       - if: steps.build.outcome == 'failure'
         run: exit 1
 
