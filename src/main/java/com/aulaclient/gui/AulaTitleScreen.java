@@ -78,6 +78,7 @@ public class AulaTitleScreen extends Screen {
         items.add(new Item("Minecraft Realms", 1, () -> minecraft.setScreenAndShow(new RealmsMainScreen(this))));
         items.add(new Item("Minecraft Settings", 2, () -> minecraft.setScreenAndShow(new OptionsScreen(this, minecraft.options))));
         items.add(new Item("Client", 2, () -> minecraft.setScreenAndShow(new AulaScreen(this))));
+        items.add(new Item("Credits", 3, () -> minecraft.setScreenAndShow(new CreditsScreen(this))));
         items.add(new Item("Quit Game", 3, () -> minecraft.stop()));
         itemY = new int[items.size()];
         itemW = new int[items.size()];
@@ -228,6 +229,17 @@ public class AulaTitleScreen extends Screen {
         return v - Math.floor(v);
     }
 
+    /** Saison-Akzent (nur wenn aktiviert): Oktober orange, Dezember blau-weiss, sonst neutral weiss. */
+    private static int seasonalTint() {
+        if (!com.aulaclient.config.AulaConfig.get().seasonalTheme) return 0xFFFFFF;
+        int month = java.time.LocalDate.now().getMonthValue();
+        return switch (month) {
+            case 10 -> 0xFF9A4A;   // Oktober: Kuerbis-Orange
+            case 12 -> 0xBFE0FF;   // Dezember: Frostblau
+            default -> 0xFFFFFF;
+        };
+    }
+
     private static double rnd(int i, int salt) {
         return frac(Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453);
     }
@@ -241,7 +253,8 @@ public class AulaTitleScreen extends Screen {
                 double frac = (k + 0.5) / strands;
                 double base = side == 0 ? width * (0.01 + 0.25 * frac) : width * (0.99 - 0.25 * frac);
                 float alpha = (0.07f + 0.09f * (float) Math.sin(frac * Math.PI * 0.9 + 0.2)) * fade;
-                int col = argb(0xFFFFFF, alpha);
+                int tint = seasonalTint();
+                int col = argb(tint, alpha);
                 int prev = Integer.MIN_VALUE;
                 for (int y = 0; y < height; y += step) {
                     double yn = (y + step / 2.0) / height;
@@ -260,7 +273,36 @@ public class AulaTitleScreen extends Screen {
         }
     }
 
-    private void drawParticles(GuiGraphicsExtractor g, float t, float fade) {
+    private void drawStarfield(GuiGraphicsExtractor g, float t, float fade) {
+        int tint = seasonalTint();
+        for (int i = 0; i < 90; i++) {
+            double x = rnd(i, 11) * width;
+            double y = rnd(i, 12) * height;
+            double tw = 0.5 + 0.5 * Math.sin(t * (0.6 + rnd(i, 13) * 1.2) + i);
+            int sz = rnd(i, 14) < 0.15 ? 2 : 1;
+            int col = argb(tint, (float) (0.25 + 0.5 * tw) * fade);
+            g.fill((int) x, (int) y, (int) x + sz, (int) y + sz, col);
+        }
+    }
+
+    private void drawFog(GuiGraphicsExtractor g, float t, float fade) {
+        int tint = seasonalTint();
+        for (int i = 0; i < 5; i++) {
+            double cy = height * (0.2 + 0.15 * i) + Math.sin(t * 0.15 + i) * 14;
+            double speed = 6 + i * 3;
+            double cx = ((t * speed + i * 160) % (width + 300)) - 150;
+            int w = (int) (width * 0.5), h = 46;
+            for (int b = 0; b < w; b += 4) {
+                double fx = cx + b;
+                if (fx < -20 || fx > width + 20) continue;
+                double edge = Math.sin((b / (double) w) * Math.PI);
+                int col = argb(tint, (float) (0.05 * edge) * fade);
+                g.fill((int) fx, (int) (cy - h / 2), (int) fx + 4, (int) (cy + h / 2), col);
+            }
+        }
+    }
+
+        private void drawParticles(GuiGraphicsExtractor g, float t, float fade) {
         for (int i = 0; i < 18; i++) {
             double xr = rnd(i, 1);
             double x = (i % 2 == 0) ? xr * width * 0.27 : width * (0.73 + xr * 0.27);
@@ -268,7 +310,7 @@ public class AulaTitleScreen extends Screen {
             double y = height - ((rnd(i, 3) * height + t * speed) % height);
             float tw = 0.5f + 0.5f * (float) Math.sin(t * 1.2 + i);
             int r = 3 + (int) (rnd(i, 4) * 3);
-            int col = argb(0xFFFFFF, (0.10f + 0.22f * tw) * fade);
+            int col = argb(seasonalTint(), (0.10f + 0.22f * tw) * fade);
             int xi = (int) x, yi = (int) y;
             for (int d = -r; d <= r; d++) {
                 int e = r - Math.abs(d);
@@ -345,7 +387,10 @@ public class AulaTitleScreen extends Screen {
         float fade = clamp01(t / 0.9f);
 
         g.fillGradient(0, 0, width, height, 0xFF040406, 0xFF0B0B11);
-        drawCurtains(g, t, fade);
+        int scene = com.aulaclient.config.AulaConfig.get().bgScene;
+        if (scene == 1) drawStarfield(g, t, fade);
+        else if (scene == 2) drawFog(g, t, fade);
+        else drawCurtains(g, t, fade);
         drawParticles(g, t, fade);
 
         int cx = width / 2;
@@ -367,7 +412,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.9.5)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 2.0.0)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
@@ -434,6 +479,7 @@ public class AulaTitleScreen extends Screen {
             for (int i = 0; i < items.size(); i++) {
                 if (itemW[i] > 0 && mx >= cx - itemW[i] / 2 && mx <= cx + itemW[i] / 2
                         && my >= itemY[i] && my <= itemY[i] + itemH[i]) {
+                    Ui.click();
                     items.get(i).action.run();
                     return true;
                 }

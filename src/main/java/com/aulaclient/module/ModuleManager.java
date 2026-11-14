@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.ItemStack;
 
 import java.time.LocalTime;
@@ -23,8 +24,12 @@ public class ModuleManager {
     public final Crosshair crosshair;
     public final Stretch stretch;
     public final CharacterFx characterFx;
+    public final FreeLook freeLook;
+    public final Cape cape;
+    public final Wings wings;
+    public final GlassBody glassBody;
 
-    public ModuleManager(KeyMapping zoomKey) {
+    public ModuleManager(KeyMapping zoomKey, KeyMapping freeLookKey) {
         modules.add(new SimpleText("FPS", "Show your current frames per second", 4, 4,
                 mc -> mc.getFps() + " FPS"));
         modules.add(new SimpleText("Coordinates", "Show your XYZ position", 4, 20,
@@ -35,6 +40,10 @@ public class ModuleManager {
         modules.add(new Cps());
         modules.add(new Keystrokes());
         modules.add(new Armor());
+        modules.add(new DamageIndicator());
+        modules.add(new PotionBar());
+        modules.add(new FpsGraph());
+        modules.add(new FavoritesBar());
         zoom = new Zoom(zoomKey);
         crosshair = new Crosshair();
         stretch = new Stretch();
@@ -43,10 +52,19 @@ public class ModuleManager {
         modules.add(crosshair);
         modules.add(stretch);
         modules.add(characterFx);
+        freeLook = new FreeLook(freeLookKey);
+        cape = new Cape();
+        wings = new Wings();
+        glassBody = new GlassBody();
+        modules.add(freeLook);
+        modules.add(cape);
+        modules.add(wings);
+        modules.add(glassBody);
 
         for (HudModule m : modules) {
-            if (m instanceof Zoom || m instanceof Stretch) m.category = "Visuals";
-            else if (m instanceof Crosshair || m instanceof CharacterFx) m.category = "Cosmetics";
+            if (m instanceof Zoom || m instanceof Stretch || m instanceof FreeLook) m.category = "Visuals";
+            else if (m instanceof Crosshair || m instanceof CharacterFx
+                    || m instanceof Cape || m instanceof Wings || m instanceof GlassBody) m.category = "Cosmetics";
             else m.category = "HUD";
         }
     }
@@ -55,7 +73,8 @@ public class ModuleManager {
     public void applyConfig() {
         AulaConfig cfg = AulaConfig.get();
         for (HudModule m : modules) {
-            boolean defaultOn = !(m instanceof Crosshair || m instanceof Stretch || m instanceof CharacterFx);
+            boolean defaultOn = !(m instanceof Crosshair || m instanceof Stretch || m instanceof CharacterFx
+                    || m instanceof FreeLook || m instanceof Cape || m instanceof Wings || m instanceof GlassBody);
             m.enabled = cfg.enabled.getOrDefault(m.name, defaultOn);
             int[] p = cfg.positions.get(m.name);
             if (p != null && p.length == 2) {
@@ -403,6 +422,264 @@ public class ModuleManager {
                     }
                 }
             }
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Zeigt kurz aufploppende, verblassende Schadenszahlen, wenn du Schaden nimmst. */
+    static class DamageIndicator extends HudModule {
+        private record Pop(float amount, long at) {}
+        private final List<Pop> pops = new ArrayList<>();
+        private float lastHealth = -1f;
+
+        DamageIndicator() {
+            super("Damage Indicator", "Show a floating number when you take damage", 4, 232);
+            w = 70; h = 16;
+        }
+
+        @Override
+        public void tick(Minecraft mc) {
+            if (mc.player == null) return;
+            float hp = mc.player.getHealth();
+            if (lastHealth >= 0 && hp < lastHealth - 0.01f) {
+                pops.add(new Pop(lastHealth - hp, System.currentTimeMillis()));
+            }
+            lastHealth = hp;
+            long now = System.currentTimeMillis();
+            pops.removeIf(p -> now - p.at > 1200);
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
+            long now = System.currentTimeMillis();
+            int i = 0;
+            for (Pop p : pops) {
+                float age = (now - p.at) / 1200f;
+                float alpha = 1f - age;
+                int yy = y - (int) (age * 14);
+                String t = "-" + (Math.round(p.amount * 10) / 10.0);
+                g.text(mc.font, t, x, yy, ((int) (alpha * 255) << 24) | 0xFF4040, true);
+                i++;
+            }
+            w = 70;
+            h = 16;
+        }
+    }
+
+    /** Eigene, kompakte Anzeige aktiver Trankeffekte statt der Vanilla-Icons. */
+    static class PotionBar extends HudModule {
+        PotionBar() {
+            super("Potion Effects", "Show active potion effects in a compact list", 4, 252);
+            w = 110;
+            h = 14;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
+            if (mc.player == null) return;
+            var effects = mc.player.getActiveEffects();
+            if (effects.isEmpty()) return;
+            int row = 0;
+            for (MobEffectInstance eff : effects) {
+                int ry = y + row * 16;
+                String name = eff.getEffect().value().getDisplayName().getString();
+                String dur = formatTime(eff.getDuration());
+                String line = name + " " + (eff.getAmplifier() + 1) + "  " + dur;
+                w = Math.max(w, mc.font.width(line) + 10);
+                g.fill(x, ry, x + w, ry + 15, 0x90101018);
+                g.fill(x, ry, x + 2, ry + 15, AulaConfig.get().accent);
+                g.text(mc.font, line, x + 5, ry + 4, 0xFFFFFFFF, true);
+                row++;
+            }
+            h = Math.max(14, row * 16);
+        }
+
+        private static String formatTime(int ticks) {
+            int s = ticks / 20;
+            return String.format("%d:%02d", s / 60, s % 60);
+        }
+    }
+
+    /** Verlauf der FPS der letzten Sekunden als kleines Liniendiagramm. */
+    static class FpsGraph extends HudModule {
+        private final Deque<Integer> history = new ArrayDeque<>();
+
+        FpsGraph() {
+            super("FPS Graph", "Show a short history of your FPS as a line graph", 4, 290);
+            w = 90;
+            h = 34;
+        }
+
+        @Override
+        public void tick(Minecraft mc) {
+            history.addLast(mc.getFps());
+            while (history.size() > 60) history.pollFirst();
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
+            g.fill(x, y, x + w, y + h, 0x90101018);
+            g.fill(x, y, x + 2, y + h, AulaConfig.get().accent);
+            if (history.isEmpty()) return;
+            int max = Math.max(30, history.stream().mapToInt(Integer::intValue).max().orElse(60));
+            int gx = x + 6, gy = y + 4, gw = w - 10, gh = h - 16;
+            int i = 0, n = history.size();
+            Integer prevV = null;
+            for (int v : history) {
+                int px = gx + (int) ((i / (float) Math.max(1, n - 1)) * gw);
+                int py = gy + gh - (int) ((v / (float) max) * gh);
+                g.fill(px, py, px + 1, gy + gh, (AulaConfig.get().accent & 0xFFFFFF) | 0x30000000);
+                if (prevV != null) {
+                    int ppy = gy + gh - (int) ((prevV / (float) max) * gh);
+                    int steps = Math.max(1, Math.abs(py - ppy));
+                    for (int s2 = 0; s2 <= steps; s2++) {
+                        int yy2 = ppy + (py - ppy) * s2 / steps;
+                        g.fill(px - 1, yy2, px + 1, yy2 + 1, 0xFFFFFFFF);
+                    }
+                }
+                prevV = v;
+                i++;
+            }
+            g.text(mc.font, mc.getFps() + " FPS", x + 5, y + h - 11, 0xFFFFFFFF, true);
+        }
+    }
+
+    /** Zeigt deine Favoriten-Module als kleine Liste mit An/Aus-Punkt (nur Uebersicht, umschalten im Client-Menue). */
+    static class FavoritesBar extends HudModule {
+        FavoritesBar() {
+            super("Favorites Bar", "Show your favorite modules and their on/off state at a glance", 4, 330);
+            w = 100;
+            h = 16;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {
+            List<String> favs = AulaConfig.get().favorites;
+            if (favs.isEmpty()) return;
+            int row = 0;
+            ModuleManager mgr = com.aulaclient.AulaClient.modules;
+            for (String fav : favs) {
+                HudModule m = mgr == null ? null : mgr.modules.stream().filter(mm -> mm.name.equals(fav)).findFirst().orElse(null);
+                if (m == null) continue;
+                int ry = y + row * 16;
+                int dotCol = m.enabled ? AulaConfig.get().accent : 0xFF55555A;
+                g.fill(x, ry + 4, x + 6, ry + 10, dotCol);
+                g.text(mc.font, m.name, x + 11, ry + 3, 0xFFE0E0E8, true);
+                w = Math.max(w, mc.font.width(m.name) + 16);
+                row++;
+            }
+            h = Math.max(16, row * 16);
+        }
+    }
+
+    /** Taste haelt Third-Person-Rueckansicht + Zoom gleichzeitig (einfache Freilook-Kombo). */
+    public static class FreeLook extends HudModule {
+        private final KeyMapping key;
+        private net.minecraft.client.CameraType previous;
+        private boolean active;
+
+        FreeLook(KeyMapping key) {
+            super("Free Look", "Hold a key to combine third-person view with zoom", 0, 0);
+            this.key = key;
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void tick(Minecraft mc) {
+            boolean down = key.isDown() && mc.gui.screen() == null;
+            if (down && !active) {
+                previous = mc.options.getCameraType();
+                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+                active = true;
+            } else if (!down && active) {
+                if (previous != null) mc.options.setCameraType(previous);
+                active = false;
+            }
+        }
+
+        @Override
+        public void onDisable(Minecraft mc) {
+            if (active && previous != null) mc.options.setCameraType(previous);
+            active = false;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Eigene Cape-Cosmetic, nur lokal sichtbar (Rendering siehe render/CosmeticLayers). */
+    public static class Cape extends HudModule {
+        Cape() {
+            super("Cape", "Wear a cape only you can see (made by Aula Client, not sent to others)", 0, 0);
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().capeEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Eigene Fluegel-Cosmetic, nur lokal sichtbar. */
+    public static class Wings extends HudModule {
+        Wings() {
+            super("Wings", "Wear wings only you can see", 0, 0);
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().wingsEnabled = on;
+            AulaConfig.save();
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Minecraft mc) {}
+    }
+
+    /** Durchsichtiger "Liquid Glass"-Koerper, nur lokal sichtbar. */
+    public static class GlassBody extends HudModule {
+        GlassBody() {
+            super("Liquid Glass Body", "Render your own body translucent, like frosted glass (only you see it)", 0, 0);
+        }
+
+        @Override
+        public List<Setting> settings() {
+            AulaConfig c = AulaConfig.get();
+            return List.of(new Setting.Slider("Opacity", 0.15, 0.85, 0.05, 2,
+                    () -> c.glassOpacity, v -> c.glassOpacity = (float) v));
+        }
+
+        @Override
+        public boolean movable() {
+            return false;
+        }
+
+        @Override
+        public void setEnabled(boolean on) {
+            super.setEnabled(on);
+            AulaConfig.get().glassBodyEnabled = on;
+            AulaConfig.save();
         }
 
         @Override

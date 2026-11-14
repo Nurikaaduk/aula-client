@@ -3,10 +3,24 @@ package com.aulaclient.gui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 
 /** Kleine Zeichenhelfer: abgerundete Rechtecke, Toggle, Icons. Alles aus fill()-Aufrufen. */
 final class Ui {
     private Ui() {}
+
+    /** Kleiner Klick-Sound fuer Menue-Interaktionen (nur wenn aktiviert). */
+    static void click(float pitch) {
+        if (!com.aulaclient.config.AulaConfig.get().menuSounds) return;
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, pitch, 0.5f));
+        } catch (Throwable ignored) { }
+    }
+
+    static void click() { click(1.0f); }
 
     /** Gefuelltes Rechteck mit abgerundeten Ecken (Radius r). Farbe sollte undurchsichtig sein. */
     static void rr(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int color) {

@@ -4,6 +4,10 @@ import com.aulaclient.config.AulaConfig;
 import com.aulaclient.gui.AulaScreen;
 import com.aulaclient.gui.AulaTitleScreen;
 import com.aulaclient.module.ModuleManager;
+import com.aulaclient.render.CosmeticLayers;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Screenshot;
+import net.minecraft.network.chat.Component;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
@@ -33,8 +37,12 @@ public class AulaClient implements ClientModInitializer {
                 new KeyMapping("key.aula.menu", InputConstants.KEY_RSHIFT, category));
         KeyMapping zoomKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping("key.aula.zoom", InputConstants.KEY_C, category));
+        KeyMapping freeLookKey = KeyMappingHelper.registerKeyMapping(
+                new KeyMapping("key.aula.freelook", InputConstants.KEY_V, category));
+        KeyMapping screenshotKey = KeyMappingHelper.registerKeyMapping(
+                new KeyMapping("key.aula.screenshot", InputConstants.KEY_F6, category));
 
-        modules = new ModuleManager(zoomKey);
+        modules = new ModuleManager(zoomKey, freeLookKey);
         modules.applyConfig();
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
@@ -45,7 +53,12 @@ public class AulaClient implements ClientModInitializer {
             while (openMenu.consumeClick()) {
                 mc.setScreenAndShow(new AulaScreen());
             }
+            while (screenshotKey.consumeClick()) {
+                takeFramedScreenshot(mc);
+            }
         });
+
+        CosmeticLayers.register();
 
         // Eigene HUD-Module
         HudElementRegistry.attachElementAfter(
@@ -63,5 +76,41 @@ public class AulaClient implements ClientModInitializer {
                         original.extractRenderState(graphics, tickCounter);
                     }
                 });
+    }
+
+    /** Macht einen normalen Screenshot und zeichnet danach einen duennen Rahmen in Theme-Farbe hinein. */
+    private static void takeFramedScreenshot(Minecraft mc) {
+        try {
+            Screenshot.grab(mc.gameDirectory, mc.getMainRenderTarget(), (Component msg) -> {
+                mc.execute(() -> {
+                    mc.gui.getChat().addMessage(msg);
+                    frameLastScreenshot(mc);
+                });
+            });
+        } catch (Throwable ignored) {
+            // Falls sich die Screenshot-API geaendert hat, einfach nichts weiter tun.
+        }
+    }
+
+    private static void frameLastScreenshot(Minecraft mc) {
+        try {
+            java.io.File dir = new java.io.File(mc.gameDirectory, "screenshots");
+            java.io.File[] files = dir.listFiles((d, n) -> n.endsWith(".png"));
+            if (files == null || files.length == 0) return;
+            java.io.File latest = files[0];
+            for (java.io.File f : files) if (f.lastModified() > latest.lastModified()) latest = f;
+            java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(latest);
+            if (img == null) return;
+            java.awt.Graphics2D gfx = img.createGraphics();
+            int accent = com.aulaclient.config.AulaConfig.get().accent;
+            gfx.setColor(new java.awt.Color(accent, true));
+            int t = Math.max(3, img.getWidth() / 250);
+            gfx.setStroke(new java.awt.BasicStroke(t));
+            gfx.drawRect(t, t, img.getWidth() - 2 * t, img.getHeight() - 2 * t);
+            gfx.dispose();
+            javax.imageio.ImageIO.write(img, "png", latest);
+        } catch (Throwable ignored) {
+            // Rahmen ist nur Dekoration; wenn es schiefgeht, bleibt der normale Screenshot erhalten.
+        }
     }
 }

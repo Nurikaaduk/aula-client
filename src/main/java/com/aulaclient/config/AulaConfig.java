@@ -42,6 +42,17 @@ public class AulaConfig {
     public int fxParticle = 1;       // Index in CharacterFx.PARTICLE_NAMES
     public int fxDensity = 2;        // 1..4
 
+    // Titelbildschirm: Hintergrund-Szene, Menue-/Klick-Sounds
+    public int bgScene = 0;          // 0 Vorhaenge, 1 Sternenhimmel, 2 Nebel
+    public boolean seasonalTheme = true;
+    public boolean menuSounds = true;
+
+    // Cosmetics: Cape / Fluegel / Glaskoerper (nur lokal sichtbar)
+    public boolean capeEnabled = false;
+    public boolean wingsEnabled = false;
+    public boolean glassBodyEnabled = false;
+    public float glassOpacity = 0.45f;
+
     private static AulaConfig instance = new AulaConfig();
 
     public static AulaConfig get() {

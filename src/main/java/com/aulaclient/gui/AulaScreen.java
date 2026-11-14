@@ -307,6 +307,49 @@ public class AulaScreen extends Screen {
         Setting.Slider op = new Setting.Slider("UI opacity", 0.3, 1.0, 0.05, 2,
                 () -> cfg.uiOpacity, v -> cfg.uiOpacity = (float) v);
         renderSetting(g, mx, my, op, cx - 12, cw + 24, ty + 34, cfg.accent);
+
+        // Menue-Klicksounds
+        int sy2 = ty + 34 + 30;
+        boolean soundsOn = cfg.menuSounds;
+        boolean soundsHov = over(mx, my, cx, sy2, rowW, 24);
+        Ui.rr(g, cx, sy2, rowW, 24, 5, soundsHov ? pCardHover() : pCard());
+        g.text(font, "Menu click sounds", cx + 10, sy2 + 8, TXT, false);
+        Ui.toggle(g, cx + rowW - 34, sy2 + 6, soundsOn, cfg.accent);
+        region(cx, sy2, rowW, 24, () -> {
+            cfg.menuSounds = !cfg.menuSounds;
+            AulaConfig.save();
+        });
+
+        // Saison-Theme
+        int sy3 = sy2 + 28;
+        boolean seasonOn = cfg.seasonalTheme;
+        boolean seasonHov = over(mx, my, cx, sy3, rowW, 24);
+        Ui.rr(g, cx, sy3, rowW, 24, 5, seasonHov ? pCardHover() : pCard());
+        g.text(font, "Seasonal title screen theme", cx + 10, sy3 + 8, TXT, false);
+        Ui.toggle(g, cx + rowW - 34, sy3 + 6, seasonOn, cfg.accent);
+        region(cx, sy3, rowW, 24, () -> {
+            cfg.seasonalTheme = !cfg.seasonalTheme;
+            AulaConfig.save();
+        });
+
+        // Hintergrund-Szene
+        g.text(font, "Background scene", cx, sy3 + 32, TXT2, false);
+        String[] scenes = {"Curtains", "Starfield", "Fog"};
+        int sceneW = (rowW - 8) / 3;
+        for (int i = 0; i < scenes.length; i++) {
+            final int si = i;
+            int sx2 = cx + i * (sceneW + 4);
+            int sy4 = sy3 + 46;
+            boolean sel = cfg.bgScene == i;
+            boolean hov2 = over(mx, my, sx2, sy4, sceneW, 22);
+            if (sel) Ui.rrBorder(g, sx2, sy4, sceneW, 22, 5, pCard(), 0xAAFFFFFF);
+            else Ui.rr(g, sx2, sy4, sceneW, 22, 5, hov2 ? pCardHover() : pCard());
+            g.centeredText(font, scenes[i], sx2 + sceneW / 2, sy4 + 7, TXT);
+            region(sx2, sy4, sceneW, 22, () -> {
+                cfg.bgScene = si;
+                AulaConfig.save();
+            });
+        }
     }
 
     // ---------------------------------------------------------------- settings panel
@@ -442,6 +485,7 @@ public class AulaScreen extends Screen {
             for (int i = regions.size() - 1; i >= 0; i--) {
                 Region r = regions.get(i);
                 if (over(mx, my, r.x, r.y, r.w, r.h)) {
+                    Ui.click();
                     r.click.accept(event.x());
                     return true;
                 }
