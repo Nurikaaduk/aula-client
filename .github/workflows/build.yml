@@ -21,6 +21,28 @@ jobs:
         run: gradle build --stacktrace
         continue-on-error: true
 
+      - name: Dump Minecraft API (debug)
+        if: always()
+        run: |
+          MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
+          FAPI=$(find ~/.gradle -iname 'fabric-api*.jar' 2>/dev/null | grep -v sources | head -1)
+          echo "=== PoseStack search"
+          unzip -l "$MC" 2>/dev/null | grep -i "PoseStack.class" | head
+          echo "=== fabric-api rendering jars"
+          find ~/.gradle -iname '*fabric-rendering*.jar' 2>/dev/null | grep -v sources
+          echo "=== Feature/RenderLayer registration callbacks in fabric api"
+          for j in $(find ~/.gradle -iname 'fabric-*.jar' 2>/dev/null | grep -v sources); do
+            unzip -l "$j" 2>/dev/null | grep -iE "RenderLayerRegist|FeatureRendererRegist|LivingEntityRenderLayer" 
+          done
+          echo "=== RenderLayer class"
+          javap -public -cp "$MC" net.minecraft.client.renderer.entity.layers.RenderLayer 2>&1 | head -20
+          echo "=== Screenshot class candidates"
+          unzip -l "$MC" 2>/dev/null | grep -iE "/Screenshot.*class$"
+          echo "=== SoundEvents.UI_BUTTON_CLICK field type"
+          javap -public -cp "$MC" net.minecraft.sounds.SoundEvents 2>&1 | grep -i "UI_BUTTON_CLICK"
+          echo "=== SimpleSoundInstance.forUI"
+          javap -public -cp "$MC" net.minecraft.client.resources.sounds.SimpleSoundInstance 2>&1 | grep -i "forUI"
+
       - if: steps.build.outcome == 'failure'
         run: exit 1
 
