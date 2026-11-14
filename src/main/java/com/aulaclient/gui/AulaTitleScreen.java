@@ -52,41 +52,7 @@ public class AulaTitleScreen extends Screen {
     private int CW = 90, CH = 150;
     private Model.Simple wideModel, slimModel;
     private Supplier<PlayerSkinRenderCache.RenderInfo> skinLookup;
-    private Model.Simple hornModel;
-    private static final Identifier HORN_TEX = Identifier.fromNamespaceAndPath("aula-client", "textures/gui/horns_model.png");
 
-    /** Eigenes 3D-Hornmodell (gebogene, segmentierte Hoerner links/rechts vom Kopf). */
-    private static Model.Simple buildHorns() {
-        MeshDefinition mesh = new MeshDefinition();
-        PartDefinition root = mesh.getRoot();
-        final int n = 11;
-        final float L = 1.9f;
-        for (int side = -1; side <= 1; side += 2) {
-            float cx = side * 4.3f, cy = -4.2f;                       // Ansatz seitlich am Kopf
-            for (int i = 0; i < n; i++) {
-                float f = i / (float) (n - 1);
-                // Winkel zur Senkrechten: am Ansatz fast waagerecht nach aussen, zur Spitze hin nach oben/innen
-                float phi = 1.25f * (float) Math.pow(1f - f, 1.3) - 0.18f * f;
-                float dx = side * (float) Math.sin(phi), dy = -(float) Math.cos(phi);
-                float mx = cx + dx * L / 2, my = cy + dy * L / 2;     // Segmentmitte
-                float sz = 3.0f * (1f - 0.82f * f) + 0.5f;
-                float len = L * 1.25f;
-                float rot = side * phi;
-                int u = f > 0.6f ? 32 : 0;
-                root.addOrReplaceChild("horn_" + side + "_" + i,
-                        CubeListBuilder.create().texOffs(u, 0).addBox(-sz / 2, -len / 2, -sz / 2, sz, len, sz),
-                        PartPose.offsetAndRotation(mx, my, 0f, 0f, 0f, rot));
-                if (i > 0 && i < n - 1) {
-                    float sp = sz * 0.5f;
-                    root.addOrReplaceChild("spike_" + side + "_" + i,
-                            CubeListBuilder.create().texOffs(32, 8).addBox(side > 0 ? sz / 2 : -sz / 2 - sp * 1.5f, -sp / 2, -sp / 2, sp * 1.5f, sp, sp),
-                            PartPose.offsetAndRotation(mx, my, 0f, 0f, 0f, rot));
-                }
-                cx += dx * L; cy += dy * L;
-            }
-        }
-        return new Model.Simple(LayerDefinition.create(mesh, 64, 32).bakeRoot(), RenderTypes::entityTranslucent);
-    }
     private boolean charReady = false;
     private double px, py, vx, vy;          // Mittelpunkt + Geschwindigkeit
     private float rotY = REST_YAW, rotX = -5f, spin;
@@ -121,7 +87,6 @@ public class AulaTitleScreen extends Screen {
             wideModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER), RenderTypes::entityTranslucent);
             slimModel = new Model.Simple(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER_SLIM), RenderTypes::entityTranslucent);
             skinLookup = minecraft.playerSkinRenderCache().createLookup(ResolvableProfile.createResolved(minecraft.getGameProfile()));
-            hornModel = buildHorns();
             charReady = true;
         } catch (Throwable t) {
             charReady = false;
@@ -273,8 +238,6 @@ public class AulaTitleScreen extends Screen {
             float scale = 0.97f * CH / 2.125f;
             int rx0 = (int) (px - CW / 2.0), ry0 = (int) (py - CH / 2.0), rx1 = (int) (px + CW / 2.0), ry1 = (int) (py + CH / 2.0);
             g.skin(m, skin.body().texturePath(), scale, rotX, rotY, -0.0625f, rx0, ry0, rx1, ry1);
-            int ex = CW, ey = CH;
-            g.skin(hornModel, HORN_TEX, scale, rotX, rotY, -0.0625f, rx0 - ex, ry0 - ey, rx1 + ex, ry1);
         } catch (Throwable t) {
             charReady = false;
         }
@@ -435,7 +398,7 @@ public class AulaTitleScreen extends Screen {
             drawAccount(g, mx, my, m);
         }
 
-        g.text(font, "Version 26.3 (Aula 1.9.3)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
+        g.text(font, "Version 26.3 (Aula 1.9.4)", 6, height - 12, argb(0x8A8A96, 0.55f * fade), false);
         String brand = "AULA CLIENT";
         int bw = font.width(brand);
         Ui.logo(g, width - bw - 12 - 14, height - 15, 11, Math.round(11f * Ui.LOGO_H / Ui.LOGO_W));
