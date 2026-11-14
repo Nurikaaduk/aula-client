@@ -24,24 +24,28 @@ jobs:
       - name: Dump Minecraft API (debug)
         if: always()
         run: |
+          set +e
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          FAPI=$(find ~/.gradle -iname 'fabric-api*.jar' 2>/dev/null | grep -v sources | head -1)
-          echo "=== PoseStack search"
-          unzip -l "$MC" 2>/dev/null | grep -i "PoseStack.class" | head
-          echo "=== fabric-api rendering jars"
-          find ~/.gradle -iname '*fabric-rendering*.jar' 2>/dev/null | grep -v sources
-          echo "=== Feature/RenderLayer registration callbacks in fabric api"
-          for j in $(find ~/.gradle -iname 'fabric-*.jar' 2>/dev/null | grep -v sources); do
-            unzip -l "$j" 2>/dev/null | grep -iE "RenderLayerRegist|FeatureRendererRegist|LivingEntityRenderLayer" 
-          done
-          echo "=== RenderLayer class"
-          javap -public -cp "$MC" net.minecraft.client.renderer.entity.layers.RenderLayer 2>&1 | head -20
+          RV1=$(find ~/.gradle -iname 'fabric-rendering-v1*.jar' 2>/dev/null | grep -v sources | head -1)
+          echo "=== fabric-rendering-v1 jar classes (Registration/Layer/Feature)"
+          unzip -l "$RV1" 2>/dev/null | grep -iE "Registrat|Layer|Feature" | head -40
+          echo "=== RenderLayer class (abstract methods)"
+          javap -public -cp "$MC" net.minecraft.client.renderer.entity.layers.RenderLayer 2>&1 | head -25
+          echo "=== RenderLayerParent"
+          javap -public -cp "$MC" net.minecraft.client.renderer.entity.layers.RenderLayerParent 2>&1 | head -10
+          echo "=== PlayerRenderState"
+          javap -public -cp "$MC" net.minecraft.client.renderer.entity.state.PlayerRenderState 2>&1 | head -30
           echo "=== Screenshot class candidates"
           unzip -l "$MC" 2>/dev/null | grep -iE "/Screenshot.*class$"
+          echo "=== Screenshot methods"
+          javap -public -cp "$MC" net.minecraft.client.Screenshot 2>&1 | head -15
           echo "=== SoundEvents.UI_BUTTON_CLICK field type"
           javap -public -cp "$MC" net.minecraft.sounds.SoundEvents 2>&1 | grep -i "UI_BUTTON_CLICK"
           echo "=== SimpleSoundInstance.forUI"
           javap -public -cp "$MC" net.minecraft.client.resources.sounds.SimpleSoundInstance 2>&1 | grep -i "forUI"
+          echo "=== PlayerModel"
+          javap -public -cp "$MC" net.minecraft.client.model.PlayerModel 2>&1 | head -15
+          set -e
 
       - if: steps.build.outcome == 'failure'
         run: exit 1
