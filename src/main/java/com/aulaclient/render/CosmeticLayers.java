@@ -22,6 +22,8 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.UvMapping;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 
 /**
  * Eigene, rein lokale Spieler-Cosmetics: Cape, Fluegel, "Liquid Glass"-Koerper.
@@ -41,7 +43,10 @@ public final class CosmeticLayers {
 
     @SuppressWarnings("unchecked")
     public static void register() {
-        LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, entityRenderer, registrationHelper) -> {
+        LivingEntityRenderLayerRegistrationCallback.EVENT.register((
+                net.minecraft.world.entity.EntityType<? extends LivingEntity> entityType,
+                LivingEntityRenderer<?, ?, ?> entityRenderer,
+                LivingEntityRenderLayerRegistrationCallback.RegistrationHelper registrationHelper) -> {
             if (entityType != EntityTypes.PLAYER) return;
             try {
                 RenderLayerParent<AvatarRenderState, PlayerModel> parent =
