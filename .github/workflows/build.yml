@@ -21,15 +21,6 @@ jobs:
         run: gradle build --stacktrace
         continue-on-error: true
 
-      - name: Dump Minecraft API (debug)
-        if: always()
-        run: |
-          set +e
-          MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== Minecraft methods returning RenderTarget"
-          javap -public -cp "$MC" net.minecraft.client.Minecraft 2>&1 | grep -i "RenderTarget"
-          set -e
-
       - if: steps.build.outcome == 'failure'
         run: exit 1
 

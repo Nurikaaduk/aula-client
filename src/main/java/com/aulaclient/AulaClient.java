@@ -7,7 +7,6 @@ import com.aulaclient.module.ModuleManager;
 import com.aulaclient.render.CosmeticLayers;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-import net.minecraft.network.chat.Component;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
@@ -81,12 +80,8 @@ public class AulaClient implements ClientModInitializer {
     /** Macht einen normalen Screenshot und zeichnet danach einen duennen Rahmen in Theme-Farbe hinein. */
     private static void takeFramedScreenshot(Minecraft mc) {
         try {
-            Screenshot.grab(mc.gameDirectory, mc.getMainRenderTarget(), (Component msg) -> {
-                mc.execute(() -> {
-                    mc.gui.getChat().addMessage(msg);
-                    frameLastScreenshot(mc);
-                });
-            });
+            Screenshot.grab(mc, true);
+            mc.execute(() -> frameLastScreenshot(mc));
         } catch (Throwable ignored) {
             // Falls sich die Screenshot-API geaendert hat, einfach nichts weiter tun.
         }
