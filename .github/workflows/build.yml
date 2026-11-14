@@ -26,19 +26,16 @@ jobs:
         run: |
           set +e
           MC=$(find "$GITHUB_WORKSPACE/.gradle/loom-cache" -name 'minecraft-merged-*.jar' | head -1)
-          echo "=== find PlayerRenderState / PlayerModel paths"
-          unzip -l "$MC" 2>/dev/null | grep -E "PlayerRenderState\.class$|/PlayerModel\.class$"
-          echo "=== RenderLayerParent (entity pkg)"
-          javap -public -cp "$MC" net.minecraft.client.renderer.entity.RenderLayerParent 2>&1 | head -10
-          echo "=== SubmitNodeCollector"
-          javap -public -cp "$MC" net.minecraft.client.renderer.SubmitNodeCollector 2>&1 | head -40
-          echo "=== LivingEntityRenderLayerRegistrationCallback"
-          RV1=$(find ~/.gradle -iname 'fabric-rendering-v1*.jar' 2>/dev/null | grep -v sources | head -1)
-          javap -public -classpath "$MC:$RV1" net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback 2>&1 | head -20
-          javap -public -classpath "$MC:$RV1" 'net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback$RegistrationHelper' 2>&1 | head -10
-          echo "=== EntityModel / submitSinglePartModel hints"
-          javap -public -cp "$MC" net.minecraft.client.renderer.entity.EntityRenderer 2>&1 | grep -iE "submit"
-          javap -public -cp "$MC" net.minecraft.client.model.EntityModel 2>&1 | head -15
+          echo "=== OrderedSubmitNodeCollector"
+          javap -public -cp "$MC" net.minecraft.client.renderer.OrderedSubmitNodeCollector 2>&1
+          echo "=== ElytraLayer submit (vanilla reference, for render pattern)"
+          javap -public -cp "$MC" net.minecraft.client.renderer.entity.layers.ElytraLayer 2>&1
+          echo "=== Model (submitSinglePartModel?)"
+          javap -public -cp "$MC" net.minecraft.client.model.Model 2>&1
+          echo "=== PlayerModel ctor + fields"
+          javap -public -cp "$MC" net.minecraft.client.model.player.PlayerModel 2>&1 | head -30
+          echo "=== PlayerRenderState fields"
+          javap -public -cp "$MC" net.minecraft.client.renderer.state.level.PlayerRenderState 2>&1
           set -e
 
       - if: steps.build.outcome == 'failure'
